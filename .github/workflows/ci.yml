@@ -108,7 +108,7 @@ jobs:
             --initialize-at-build-time=uor \
             --initialize-at-build-time=scala.runtime \
             --initialize-at-build-time=java.lang \
-            --initialize-at-run-time=java.security.SecureRandom \
+            --initialize-at-build-time=java.security \
             -H:+AllowIncompleteClasspath
 
       - name: Verify artifacts & symbols
