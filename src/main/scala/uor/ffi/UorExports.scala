@@ -1,9 +1,10 @@
 //> using scala 3.5.2
+//> using dep org.graalvm.sdk:nativeimage:24.2.1
 package uor.ffi
 
 import org.graalvm.nativeimage.IsolateThread
 import org.graalvm.nativeimage.c.function.CEntryPoint
-import org.graalvm.nativeimage.c.type.{CCharPointer, CLongPointer}
+import org.graalvm.nativeimage.c.`type`.{CCharPointer, CLongPointer}
 import uor.kernel.*
 import java.nio.ByteBuffer
 import java.security.MessageDigest
