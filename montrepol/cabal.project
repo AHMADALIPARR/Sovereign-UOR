@@ -1,0 +1,25 @@
+-- One build for the whole monorepo.
+--
+-- Every package depends only on GHC boot packages and on each other. That is a
+-- deliberate constraint, checked by the gate (R6): nothing here arrives from
+-- Hackage, so the build is reproducible from a compiler alone.
+
+packages:
+  packages/mp-check
+  packages/mp-linalg
+  packages/mp-lie
+  packages/mp-seq
+  packages/mp-analytic
+  packages/mp-gate
+
+with-compiler: ghc-9.10.1
+
+-- No package repository at all. A dependency outside the GHC distribution and
+-- this repository cannot even be resolved, which makes R6 a property of the
+-- build rather than only of the gate.
+active-repositories: :none
+
+tests: True
+
+package *
+  ghc-options: -Wall -Wcompat -Wincomplete-uni-patterns -Wincomplete-record-updates -Wredundant-constraints -Werror
