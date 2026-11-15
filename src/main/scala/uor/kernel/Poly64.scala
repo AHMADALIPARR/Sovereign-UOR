@@ -141,8 +141,10 @@ object Poly64:
     val n = rawCoeff.length
     if n == 0 then return zero(numVars)
 
+    // Sort indices by lexicographic (unsigned) order of exponent vectors.
+    // Arrays.sort(int[], Comparator) does not exist in the JDK, so we use Scala's sortInPlaceWith.
     val order = Array.tabulate(n)(identity)
-    java.util.Arrays.sort(order, (a: Int, b: Int) => Arrays.compareUnsigned(rawExps(a), rawExps(b)))
+    order.sortInPlaceWith((a, b) => Arrays.compareUnsigned(rawExps(a), rawExps(b)) < 0)
 
     val outExps  = new Array[Array[Int]](n)
     val outCoeff = new Array[Long](n)
