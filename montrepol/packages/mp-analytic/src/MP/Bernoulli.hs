@@ -1,36 +1,24 @@
--- | Bernoulli numbers, exactly.
---
--- Defined by @B_0 = 1@ and @sum_{k=0}^{m} C(m+1, k) B_k = 0@ for @m >= 1@,
--- which gives @B_1 = -1/2@. They are needed exactly because Euler–Maclaurin
--- uses them as coefficients and their growth would otherwise be guessed.
+-- | Exact Bernoulli numbers by the recurrence from the definition of the
+-- generating function, so the denominators are the ones von Staudt-Clausen
+-- predicts (AN-03).
 module MP.Bernoulli
   ( bernoulli
-  , bernoullis
-  , binomial
   ) where
 
--- | @B_0, B_1, B_2, ...@, each computed once.
-bernoullis :: [Rational]
-bernoullis = map b [0 ..]
-  where
-    b :: Integer -> Rational
-    b 0 = 1
-    b m =
-      negate (sum [fromInteger (binomial (m + 1) k) * bAt k | k <- [0 .. m - 1]])
-        / fromInteger (m + 1)
-    bAt k = case drop (fromInteger k) bernoullis of
-      (v : _) -> v
-      [] -> 0
+import MP.Algebra
 
--- | @B_n@, or 0 for negative @n@.
+-- | B_m as a rational. B_1 = -1/2 (the convention that makes Euler-Maclaurin
+-- clean).
 bernoulli :: Int -> Rational
-bernoulli n
-  | n < 0 = 0
-  | otherwise = case drop n bernoullis of
-      (v : _) -> v
-      [] -> 0
+bernoulli 0 = 1
+bernoulli 1 = -1 % 2
+bernoulli m
+  | m < 0 = 0
+  | otherwise =
+      let s = sumS [fromIntegral (choose m k) * bernoulli k | k <- [0 .. m - 1]]
+       in -s / fromIntegral (m + 1)
 
-binomial :: Integer -> Integer -> Integer
-binomial n k
+choose :: Int -> Int -> Integer
+choose n k
   | k < 0 || k > n = 0
-  | otherwise = product [n - k + 1 .. n] `div` product [1 .. k]
+  | otherwise = product [fromIntegral (n - i + 1) | i <- [1 .. k]] `div` product [1 .. fromIntegral k]
