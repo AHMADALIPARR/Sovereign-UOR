@@ -3,6 +3,8 @@
 **Canonical sparse multivariate polynomials over `(Z / 2^64 Z)[x₀, …, x_{k-1}]`**  
 with GraalVM Native Image shared-library FFI for BQN / C ABI.
 
+[![CI](https://github.com/AHMADALIPARR/Sovereign-UOR/actions/workflows/ci.yml/badge.svg)](https://github.com/AHMADALIPARR/Sovereign-UOR/actions/workflows/ci.yml)
+
 Includes:
 - `Poly64` — sorted sparse terms, O(m+n) addition, multiplication (optional Boolean quotient `x_i² = x_i`), evaluation, flat packing, and deterministic SHA-256 URN digests.
 - `D_{2^64}` dihedral vector transforms (bitwise NOT + modular shift).
@@ -16,11 +18,26 @@ src/main/scala/
 ├── uor/kernel/
 │   ├── Poly64.scala      # core ring operations
 │   └── U64.scala         # thin unsigned wrapper
-└── uor/ffi/
-    └── UorExports.scala  # @CEntryPoint exports
+src/test/scala/
+└── uor/kernel/
+    └── Poly64Test.scala  # munit suite
+src/main/scala/uor/ffi/
+└── UorExports.scala      # @CEntryPoint exports
 ```
 
-## Build (GraalVM Native Image)
+## CI Pipeline
+
+Custom GitHub Actions workflow (`.github/workflows/ci.yml`):
+
+| Job | What it does |
+|-----|--------------|
+| **Compile & Test (JVM)** | Compiles all sources with Scala 3.5.2 via `scala-cli` and runs the munit suite covering addition, wrapping arithmetic, Boolean quotient, canonicalization, digests, and evaluation |
+| **Native Image** | Builds `libuor.so` + headers with GraalVM 21 `native-image --shared` and uploads the artifacts |
+| **CI Status** | Final gate – both jobs must succeed |
+
+Artifacts from successful runs are available under the Actions tab (14-day retention).
+
+## Build (local)
 
 Requires a GraalVM JDK with the `native-image` component (e.g. GraalVM for JDK 21+).
 
@@ -39,6 +56,12 @@ native-image --shared \
 ```
 
 This produces `libuor.so` (Linux) / `libuor.dylib` (macOS) and the corresponding header.
+
+### Run tests locally
+
+```bash
+scala-cli test src/main/scala/uor/kernel src/test/scala/uor/kernel/Poly64Test.scala
+```
 
 ## BQN FFI Example
 
