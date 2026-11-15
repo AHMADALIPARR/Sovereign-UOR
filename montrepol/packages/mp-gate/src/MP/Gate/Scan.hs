@@ -3,11 +3,11 @@
 module MP.Gate.Scan
   ( Tag
   , tagsIn
+  , tagOf
   , deferrals
   , partials
   ) where
 
-import Data.Char (isAlphaNum)
 import Data.List (isPrefixOf)
 
 type Tag = (String, String) -- id, file
