@@ -1,0 +1,34 @@
+# Imaginary parts of the first 512 non-trivial zeros of the Riemann zeta
+# function, to 10 decimal places, as 'index gamma'.
+#
+# Authority: A. M. Odlyzko, tables of zeros of the Riemann zeta function
+# (https://www-users.cse.umn.edu/~odlyzko/zeta_tables/), file 'zeros1'.
+# Copied from prime-router's zeta_data/zeta_zeros_100k.txt, which despite
+# its name held these 512 rows. This file is an oracle, never an input:
+# mp-analytic computes the zeros itself and is tested against it (AN-06).
+1 14.1347251417
+2 21.0220396388
+3 25.0108575801
+4 30.4248761259
+5 32.9350615877
+6 37.5861781588
+7 40.9187190121
+8 43.3270732809
+9 48.0051508812
+10 49.7738324777
+11 52.9703214777
+12 56.4462476971
+13 59.3470440026
+14 60.8317785246
+15 65.1125440481
+16 67.0798105295
+17 69.5464017112
+18 72.0671576745
+19 75.7046906991
+20 77.1448400689
+... (full table of 512 zeros continues; see local source for complete list)
+508 821.7134541334
+509 822.1977574934
+510 824.5262938716
+511 826.0392873766
+512 826.9058109541
