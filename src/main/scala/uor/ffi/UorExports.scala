@@ -23,15 +23,17 @@ object UorExports:
       shift: Long,
       flip: Int
   ): Unit =
-    var i = 0L
+    // CLongPointer index overloads take Int (or SignedWord), not Long
+    var i = 0
+    val n = len.toInt
     if flip != 0 then
-      while i < len do
+      while i < n do
         data.write(i, (~data.read(i)) + shift)
-        i += 1L
+        i += 1
     else
-      while i < len do
+      while i < n do
         data.write(i, data.read(i) + shift)
-        i += 1L
+        i += 1
 
   /** Compute 65-bin Hamming weight (stratum) histogram across a u64 buffer */
   @scala.annotation.static
@@ -42,15 +44,16 @@ object UorExports:
       len: Long,
       outCounts65: CLongPointer
   ): Unit =
-    var b = 0L
-    while b < 65L do
+    var b = 0
+    while b < 65 do
       outCounts65.write(b, 0L)
-      b += 1L
-    var i = 0L
-    while i < len do
-      val w = java.lang.Long.bitCount(data.read(i)).toLong
+      b += 1
+    var i = 0
+    val n = len.toInt
+    while i < n do
+      val w = java.lang.Long.bitCount(data.read(i))
       outCounts65.write(w, outCounts65.read(w) + 1L)
-      i += 1L
+      i += 1
 
   /** Write 32-byte canonical SHA-256 digest of a D_{2^64} element into outDigest32 */
   @scala.annotation.static
@@ -89,14 +92,14 @@ object UorExports:
     val buf    = new Array[Long](total)
     var i      = 0
     while i < total do
-      buf(i) = flatTermsInOut.read(i.toLong)
+      buf(i) = flatTermsInOut.read(i)
       i += 1
 
     val canon   = Poly64.fromFlatU64(numVars, buf)
     val outFlat = canon.toFlatU64
     var j       = 0
     while j < outFlat.length do
-      flatTermsInOut.write(j.toLong, outFlat(j))
+      flatTermsInOut.write(j, outFlat(j))
       j += 1
 
     val digest = canon.digestBytes
