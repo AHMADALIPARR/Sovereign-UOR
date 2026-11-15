@@ -16,111 +16,78 @@ env:
 
 jobs:
   # ------------------------------------------------------------------
-  # Fast path: pure kernel compile + munit tests (no GraalVM needed)
+  # Scala: pure kernel + munit
   # ------------------------------------------------------------------
-  test:
-    name: Compile & Test (JVM)
+  scala-test:
+    name: Scala Compile & Test
     runs-on: ubuntu-latest
     timeout-minutes: 12
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Java (Temurin 21)
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
-
       - name: Install scala-cli
         run: |
           curl -fsSL https://github.com/VirtusLab/scala-cli/releases/latest/download/scala-cli-x86_64-pc-linux.gz \
             | gunzip > /usr/local/bin/scala-cli
           chmod +x /usr/local/bin/scala-cli
-          scala-cli version
-
-      - name: Compile kernel sources
+      - name: Compile kernel
         run: |
-          # Only the pure kernel – UorExports needs GraalVM classes
-          scala-cli compile \
-            --scala ${{ env.SCALA_VERSION }} \
+          scala-cli compile --scala ${{ env.SCALA_VERSION }} \
             src/main/scala/uor/kernel/U64.scala \
             src/main/scala/uor/kernel/Poly64.scala
-
-      - name: Run unit tests (munit)
+      - name: Unit tests
         run: |
-          scala-cli test \
-            --scala ${{ env.SCALA_VERSION }} \
+          scala-cli test --scala ${{ env.SCALA_VERSION }} \
             --test-only uor.kernel.Poly64Test \
             src/main/scala/uor/kernel \
             src/test/scala/uor/kernel/Poly64Test.scala
 
   # ------------------------------------------------------------------
-  # Native Image shared library (GraalVM)
+  # Scala: GraalVM native shared library
   # ------------------------------------------------------------------
   native-image:
-    name: Native Image (shared lib)
+    name: Native Image (libuor)
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    needs: test
-
+    needs: scala-test
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup GraalVM + native-image
-        uses: graalvm/setup-graalvm@v1
+      - uses: actions/checkout@v4
+      - uses: graalvm/setup-graalvm@v1
         with:
           java-version: "21"
           distribution: graalvm
           components: "native-image"
           github-token: ${{ secrets.GITHUB_TOKEN }}
           native-image-job-reports: "true"
-
       - name: Install scala-cli
         run: |
           curl -fsSL https://github.com/VirtusLab/scala-cli/releases/latest/download/scala-cli-x86_64-pc-linux.gz \
             | gunzip > /usr/local/bin/scala-cli
           chmod +x /usr/local/bin/scala-cli
-
-      - name: Compile all sources (incl. FFI)
+      - name: Compile
         run: |
           mkdir -p build
-          scala-cli --power compile \
-            --scala ${{ env.SCALA_VERSION }} \
-            --server=false \
-            -d build \
+          scala-cli --power compile --scala ${{ env.SCALA_VERSION }} --server=false -d build \
             src/main/scala/uor/kernel/U64.scala \
             src/main/scala/uor/kernel/Poly64.scala \
             src/main/scala/uor/ffi/UorExports.scala
-          echo "=== Class files ==="
-          find build -name '*.class' | sort
-
-      - name: Build shared library with native-image
+      - name: native-image --shared
         run: |
-          native-image --shared \
-            -cp build \
-            -H:Name=libuor \
-            -O2 \
-            --no-fallback \
+          native-image --shared -cp build -H:Name=libuor -O2 --no-fallback \
             -H:+ReportExceptionStackTraces \
             --initialize-at-build-time=uor \
             --initialize-at-build-time=scala.runtime \
             --initialize-at-build-time=java.lang \
             --initialize-at-build-time=java.security \
             -H:+AllowIncompleteClasspath
-
-      - name: Verify artifacts & symbols
+      - name: Verify
         run: |
-          echo "=== Artifacts ==="
-          ls -lh libuor* graal_isolate* 2>/dev/null || true
+          ls -lh libuor* 2>/dev/null || true
           file libuor.so
-          echo "=== Exported UOR symbols ==="
-          nm -D --defined-only libuor.so 2>/dev/null | grep -E 'uor_' || echo "(symbols check optional)"
-
-      - name: Upload native artifacts
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: libuor-linux-x86_64
           path: |
@@ -131,24 +98,56 @@ jobs:
           retention-days: 14
 
   # ------------------------------------------------------------------
-  # Final status gate
+  # montrepol: Cabal build, test, gate
+  # ------------------------------------------------------------------
+  cabal:
+    name: Cabal (montrepol)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: montrepol
+    steps:
+      - uses: actions/checkout@v4
+      - uses: haskell-actions/setup@v2
+        with:
+          ghc-version: "9.10.1"
+          cabal-version: "3.12.1.0"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cabal/store
+            montrepol/dist-newstyle
+          key: ${{ runner.os }}-ghc-9.10.1-${{ hashFiles('montrepol/cabal.project', 'montrepol/packages/*/*.cabal') }}
+      - name: cabal build all
+        run: cabal build all
+      - name: cabal test all
+        run: cabal test all --test-show-details=direct
+      - name: cabal run mp-gate
+        run: cabal run mp-gate
+      - name: CONFORMANCE.md up to date
+        run: cabal run mp-gate -- write && git diff --exit-code CONFORMANCE.md
+
+  # ------------------------------------------------------------------
+  # Final gate
   # ------------------------------------------------------------------
   status:
     name: CI Status
     runs-on: ubuntu-latest
-    needs: [test, native-image]
+    needs: [scala-test, native-image, cabal]
     if: always()
     steps:
-      - name: Aggregate results
+      - name: Aggregate
         run: |
-          echo "Test job      → ${{ needs.test.result }}"
+          echo "Scala tests   → ${{ needs.scala-test.result }}"
           echo "Native Image  → ${{ needs.native-image.result }}"
-          if [[ "${{ needs.test.result }}" != "success" ]]; then
-            echo "❌ JVM compile / unit tests failed"
-            exit 1
-          fi
-          if [[ "${{ needs.native-image.result }}" != "success" ]]; then
-            echo "❌ Native Image shared-library build failed"
+          echo "Cabal         → ${{ needs.cabal.result }}"
+          fail=0
+          [[ "${{ needs.scala-test.result }}" == success ]] || fail=1
+          [[ "${{ needs.native-image.result }}" == success ]] || fail=1
+          [[ "${{ needs.cabal.result }}" == success ]] || fail=1
+          if [[ $fail -ne 0 ]]; then
+            echo "❌ One or more jobs failed"
             exit 1
           fi
           echo "✅ All CI jobs passed"
