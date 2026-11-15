@@ -1,103 +1,101 @@
 # Sovereign UOR
 
-**Canonical sparse multivariate polynomials over `(Z / 2^64 Z)[x₀, …, x_{k-1}]`**  
-with GraalVM Native Image shared-library FFI for BQN / C ABI.
+**Inverted monorepo** — two sovereign stacks that share a claim discipline and nothing else:
+
+| Tree | Language | What it is |
+|------|----------|------------|
+| **`src/`** (root) | Scala 3 + GraalVM | Canonical sparse multivariate polynomials over `(Z/2⁶⁴Z)` with native-image FFI for BQN / C |
+| **`montrepol/`** | Haskell (Cabal) | Exact mathematics with every claim tied to a test that can fail — 6 packages, R1–R6 gate, 171 checks |
 
 [![CI](https://github.com/AHMADALIPARR/Sovereign-UOR/actions/workflows/ci.yml/badge.svg)](https://github.com/AHMADALIPARR/Sovereign-UOR/actions/workflows/ci.yml)
 
-Includes:
-- `Poly64` — sorted sparse terms, O(m+n) addition, multiplication (optional Boolean quotient `x_i² = x_i`), evaluation, flat packing, and deterministic SHA-256 URN digests.
-- `D_{2^64}` dihedral vector transforms (bitwise NOT + modular shift).
-- 65-bin Hamming-weight (strata) histograms.
-- In-place polynomial canonicalization with digest emission.
-
-## Layout
-
 ```
-src/main/scala/
-├── uor/kernel/
-│   ├── Poly64.scala      # core ring operations
-│   └── U64.scala         # thin unsigned wrapper
-src/test/scala/
-└── uor/kernel/
-    └── Poly64Test.scala  # munit suite
-src/main/scala/uor/ffi/
-└── UorExports.scala      # @CEntryPoint exports
+Sovereign-UOR/
+├── src/main/scala/uor/     # Poly64 kernel + GraalVM CEntryPoint exports
+├── src/test/scala/uor/     # munit suite
+├── montrepol/              # Cabal monorepo (exact math)
+│   ├── cabal.project       # active-repositories: :none (no Hackage)
+│   ├── packages/           # mp-check, mp-linalg, mp-lie, mp-seq, mp-analytic, mp-gate
+│   ├── model/              # claim register (ids, authorities, mutants, ledger)
+│   └── oracles/            # Odlyzko zeros, etc.
+└── .github/workflows/ci.yml
 ```
 
-## CI Pipeline
+---
 
-Custom GitHub Actions workflow (`.github/workflows/ci.yml`):
+## 1. Scala / UOR (`src/`)
 
-| Job | What it does |
-|-----|--------------|
-| **Compile & Test (JVM)** | Compiles all sources with Scala 3.5.2 via `scala-cli` and runs the munit suite covering addition, wrapping arithmetic, Boolean quotient, canonicalization, digests, and evaluation |
-| **Native Image** | Builds `libuor.so` + headers with GraalVM 21 `native-image --shared` and uploads the artifacts |
-| **CI Status** | Final gate – both jobs must succeed |
-
-Artifacts from successful runs are available under the Actions tab (14-day retention).
-
-## Build (local)
-
-Requires a GraalVM JDK with the `native-image` component (e.g. GraalVM for JDK 21+).
+Canonical sparse polynomials, dihedral `D_{2^64}` transforms, strata histograms, SHA-256 digests / URNs, GraalVM shared library.
 
 ```bash
-mkdir -p build
-scalac -d build \
-  src/main/scala/uor/kernel/U64.scala \
-  src/main/scala/uor/kernel/Poly64.scala \
-  src/main/scala/uor/ffi/UorExports.scala
-
-native-image --shared \
-  -cp build \
-  -H:Name=libuor \
-  -O3 --march=native \
-  --no-fallback
-```
-
-This produces `libuor.so` (Linux) / `libuor.dylib` (macOS) and the corresponding header.
-
-### Run tests locally
-
-```bash
+# JVM tests
 scala-cli test src/main/scala/uor/kernel src/test/scala/uor/kernel/Poly64Test.scala
+
+# Native shared library
+mkdir -p build
+scalac -d build src/main/scala/uor/kernel/*.scala src/main/scala/uor/ffi/UorExports.scala
+native-image --shared -cp build -H:Name=libuor -O3 --no-fallback
 ```
+
+See the [BQN FFI example](#bqn-ffi-example) below.
+
+---
+
+## 2. montrepol (`montrepol/`)
+
+Exact mathematics in Haskell. Depends on nothing but GHC: no Hackage packages, no network. The test harness, PRNG, TOML reader and every algorithm are written here.
+
+```bash
+cd montrepol
+cabal build all          # GHC 9.10.1, cabal 3.12
+cabal test all           # 171 checks across 6 packages
+cabal run mp-gate        # rules R1–R6 over the model, sources and build
+cabal run mp-gate -- mutants   # 13 planted defects; each must be caught
+```
+
+| Package | Role |
+|---------|------|
+| `mp-check` | Test harness: SplitMix64, generators, ID-tagged tests |
+| `mp-linalg` | Semirings, typed matrices, Strassen, Bareiss, participation ratio |
+| `mp-lie` | Root systems A–G, Cartan matrices, Weyl orders |
+| `mp-seq` | Berlekamp–Massey, LFSRs |
+| `mp-analytic` | Sieve, Bernoulli, ζ, Hardy Z, explicit formula |
+| `mp-gate` | Rules R1–R6 + mutant replay |
+
+Full package docs: [`montrepol/README.md`](montrepol/README.md) · [`montrepol/CONFORMANCE.md`](montrepol/CONFORMANCE.md) · [`montrepol/VERIFICATION.md`](montrepol/VERIFICATION.md)
+
+---
+
+## CI
+
+Root workflow runs **both** stacks:
+
+1. **Scala** — compile kernel, munit, GraalVM `libuor.so`
+2. **Cabal** — `cabal build all && cabal test all && cabal run mp-gate` inside `montrepol/`
+
+---
 
 ## BQN FFI Example
 
 ```bqn
 lib ← "./libuor.so"
-
-# 1. Boot a GraalVM IsolateThread
 CreateIsolate ← lib •FFI "i32"‿"graal_create_isolate"‿">*"‿">*"‿">&u64"
 rc‿tbuf ← CreateIsolate ⟨0, 0, ⟨0⟩⟩
 thread ← 0 ⊏ tbuf
-
-# 2. Bind UOR native kernels
 D64Transform ← lib •FFI ""‿"uor_d64_transform_inplace"‿">u64"‿">&u64"‿">u64"‿">u64"‿">i32"
 StrataHist   ← lib •FFI ""‿"uor_strata_histogram"‿">u64"‿">*u64"‿">u64"‿">&u64"
 Poly64Canon  ← lib •FFI "i32"‿"uor_poly64_canonicalize"‿">u64"‿">i32"‿">i32"‿">&u64"‿">&u8"
-
-# 3. Apply D_{2^64} dihedral action (bnot followed by +1 = succ) across 1M u64 elements
 vec ← ↡1000000
 res ← D64Transform ⟨thread, vec, ≠vec, 1, 1⟩
 hist ← StrataHist ⟨thread, res, ≠res, 65ⰵ0⟩
-
-# 4. Reduce an unnormalized 2-variable polynomial in (Z/2^64 Z)[x0, x1]:
-#    (1·x0¹·x1⁰) + ((2^64 - 1)·x0¹·x1⁰) + (7·x0⁰·x1²)  ==>  7·x1²
 neg1 ← ¯1 + 2⋅64
-rawTerms ←  Join ⟨
-  1‿0‿1
-  1‿0‿neg1
-  0‿2‿7
-⟩
+rawTerms ← Join ⟨ 1‿0‿1 ⋄ 1‿0‿neg1 ⋄ 0‿2‿7 ⟩
 k‿canonTerms‿sha256 ← Poly64Canon ⟨thread, 2, 3, rawTerms, 32ⰵ0⟩
-•Show k                  # 1 surviving canonical term
-•Show (k‿3) ⰵ canonTerms # ⟨ 0 2 7 ⟩
-•Show sha256             # 32-byte canonical UOR digest
 ```
 
-## License
+---
 
-All rights reserved / sovereign.  
-Use at your own risk; the mathematics is public, the implementation is yours to own.
+## Licence
+
+- **Scala / UOR (root):** all rights reserved / sovereign.
+- **montrepol:** AGPL-3.0-or-later ([`montrepol/LICENSE`](montrepol/LICENSE)); UOR Foundation template parts retain MIT / Apache-2.0 notices ([`montrepol/NOTICE`](montrepol/NOTICE)).
