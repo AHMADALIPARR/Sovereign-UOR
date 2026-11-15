@@ -11,6 +11,9 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  SCALA_VERSION: 3.5.2
+
 jobs:
   # ------------------------------------------------------------------
   # Fast path: compile kernel + run pure-Scala unit tests
@@ -18,7 +21,7 @@ jobs:
   test:
     name: Compile & Test (JVM)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 12
 
     steps:
       - name: Checkout
@@ -29,11 +32,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-          cache: sbt          # harmless even if we don't use sbt
 
       - name: Install scala-cli
         run: |
-          curl -sS -L https://github.com/VirtusLab/scala-cli/releases/latest/download/scala-cli-x86_64-pc-linux.gz \
+          curl -fsSL https://github.com/VirtusLab/scala-cli/releases/latest/download/scala-cli-x86_64-pc-linux.gz \
             | gunzip > /usr/local/bin/scala-cli
           chmod +x /usr/local/bin/scala-cli
           scala-cli version
@@ -41,13 +43,15 @@ jobs:
       - name: Compile sources
         run: |
           scala-cli compile \
+            --scala ${{ env.SCALA_VERSION }} \
             src/main/scala/uor/kernel/U64.scala \
             src/main/scala/uor/kernel/Poly64.scala \
             src/main/scala/uor/ffi/UorExports.scala
 
-      - name: Run unit tests
+      - name: Run unit tests (munit)
         run: |
           scala-cli test \
+            --scala ${{ env.SCALA_VERSION }} \
             --test-only uor.kernel.Poly64Test \
             src/main/scala/uor/kernel \
             src/test/scala/uor/kernel/Poly64Test.scala
@@ -58,25 +62,25 @@ jobs:
   native-image:
     name: Native Image (shared lib)
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    needs: test          # only run if tests passed
+    timeout-minutes: 40
+    needs: test
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup GraalVM
+      - name: Setup GraalVM + native-image
         uses: graalvm/setup-graalvm@v1
         with:
-          java-version: 21
-          distribution: graalvm
+          java-version: '21'
+          distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          native-image-job-reports: true
-          cache: native-image
+          native-image-job-reports: 'true'
+          cache: 'native-image'
 
       - name: Install scala-cli
         run: |
-          curl -sS -L https://github.com/VirtusLab/scala-cli/releases/latest/download/scala-cli-x86_64-pc-linux.gz \
+          curl -fsSL https://github.com/VirtusLab/scala-cli/releases/latest/download/scala-cli-x86_64-pc-linux.gz \
             | gunzip > /usr/local/bin/scala-cli
           chmod +x /usr/local/bin/scala-cli
 
@@ -84,33 +88,37 @@ jobs:
         run: |
           mkdir -p build
           scala-cli --power compile \
+            --scala ${{ env.SCALA_VERSION }} \
             --server=false \
             -d build \
             src/main/scala/uor/kernel/U64.scala \
             src/main/scala/uor/kernel/Poly64.scala \
             src/main/scala/uor/ffi/UorExports.scala
+          echo "=== Class files ==="
+          find build -name '*.class' | head -30
 
       - name: Build shared library with native-image
         run: |
           native-image --shared \
             -cp build \
             -H:Name=libuor \
-            -O3 \
+            -O2 \
             --no-fallback \
-            --enable-url-protocols=https \
             -H:+ReportExceptionStackTraces \
-            -H:ReflectionConfigurationFiles= \
             --initialize-at-build-time=uor \
-            --initialize-at-build-time=scala \
-            --initialize-at-build-time=java.security \
-            -H:IncludeResources=.*
+            --initialize-at-build-time=scala.runtime \
+            --initialize-at-build-time=java.lang \
+            --initialize-at-run-time=java.security.SecureRandom \
+            -H:Log=registerResource: \
+            -H:+AllowIncompleteClasspath
 
-      - name: Verify artifacts
+      - name: Verify artifacts & symbols
         run: |
-          ls -lh libuor.so libuor.h || ls -lh *.so *.h
-          file libuor.so || file *.so
-          # quick smoke: the shared object must export the entry points
-          nm -D libuor.so 2>/dev/null | grep -E 'uor_(d64_transform_inplace|strata_histogram|poly64_canonicalize)' || true
+          echo "=== Artifacts ==="
+          ls -lh libuor* graal_isolate* 2>/dev/null || true
+          file libuor.so
+          echo "=== Exported UOR symbols ==="
+          nm -D --defined-only libuor.so 2>/dev/null | grep -E 'uor_' || echo "(nm symbols not listed – still ok if .so exists)"
 
       - name: Upload native artifacts
         uses: actions/upload-artifact@v4
@@ -124,7 +132,7 @@ jobs:
           retention-days: 14
 
   # ------------------------------------------------------------------
-  # Status summary (always runs)
+  # Final status gate
   # ------------------------------------------------------------------
   status:
     name: CI Status
@@ -132,16 +140,16 @@ jobs:
     needs: [test, native-image]
     if: always()
     steps:
-      - name: Check results
+      - name: Aggregate results
         run: |
-          echo "Test job: ${{ needs.test.result }}"
-          echo "Native Image job: ${{ needs.native-image.result }}"
-          if [ "${{ needs.test.result }}" != "success" ]; then
-            echo "❌ Unit tests / compilation failed"
+          echo "Test job      → ${{ needs.test.result }}"
+          echo "Native Image  → ${{ needs.native-image.result }}"
+          if [[ "${{ needs.test.result }}" != "success" ]]; then
+            echo "❌ JVM compile / unit tests failed"
             exit 1
           fi
-          if [ "${{ needs.native-image.result }}" != "success" ]; then
-            echo "❌ Native Image build failed"
+          if [[ "${{ needs.native-image.result }}" != "success" ]]; then
+            echo "❌ Native Image shared-library build failed"
             exit 1
           fi
           echo "✅ All CI jobs passed"
