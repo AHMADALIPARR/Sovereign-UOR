@@ -1,0 +1,263 @@
+# model/ids.toml --- the conformance ID register.
+#
+# Every claim with a test, in one place. CONFORMANCE.md is generated from
+# this file (R1). Each ID must be tagged on at least one test in its package,
+# and every test tag must be an ID here (R3). Levels (R2):
+#
+#   some-true  reproduced from an authority; not established here
+#   build      constructed here and checked against an oracle; evidence, not proof
+#
+# An ID is never `open`: it has a test, and a test asserts.
+
+spec = "montrepol/1"
+
+[[id]]
+id = "CK-01"
+package = "mp-check"
+level = "build"
+claim = "integerIn lo hi yields values in the closed interval [lo, hi]."
+oracle = "200 generated intervals and draws."
+
+[[id]]
+id = "CK-02"
+package = "mp-check"
+level = "build"
+claim = "The property runner reports a property that fails on one value in ten, and accepts a true one."
+oracle = "x /= 7 over [0, 9], 200 cases."
+
+[[id]]
+id = "CK-03"
+package = "mp-check"
+level = "build"
+claim = "integerIn reaches every value of a small range."
+oracle = "400 draws from [0, 9]."
+
+[[id]]
+id = "CK-04"
+package = "mp-check"
+level = "build"
+claim = "The SplitMix64 stream matches the published algorithm."
+oracle = "First three outputs for seed 0 from an independent C implementation."
+authorities = ["steele-2014"]
+
+[[id]]
+id = "LA-01"
+package = "mp-linalg"
+level = "build"
+claim = "Integer, Rational, GF2 and MinPlus satisfy the semiring axioms."
+oracle = "Random triples, each axiom checked as an equation."
+
+[[id]]
+id = "LA-02"
+package = "mp-linalg"
+level = "build"
+claim = "Matrix multiplication is associative, distributes over addition and has the identity as unit."
+oracle = "Random integer matrices of random compatible shapes up to 6."
+
+[[id]]
+id = "LA-03"
+package = "mp-linalg"
+level = "build"
+claim = "Strassen multiplication equals the definition of the product, for every cutoff, over Integer, Rational and GF2."
+oracle = "The naive sum-of-products, on random shapes up to 20x20."
+authorities = ["strassen-1969"]
+
+[[id]]
+id = "LA-04"
+package = "mp-linalg"
+level = "build"
+claim = "The Bareiss determinant equals the Leibniz expansion over Integer and GF2."
+oracle = "The permutation expansion, on random matrices up to 6x6, and a hand-checked matrix needing a pivot swap."
+authorities = ["bareiss-1968"]
+
+[[id]]
+id = "LA-05"
+package = "mp-linalg"
+level = "build"
+claim = "The inverse of a nonsingular matrix multiplies back to the identity, and a singular matrix has no inverse."
+oracle = "Random nonsingular and singular integer matrices."
+
+[[id]]
+id = "LA-06"
+package = "mp-linalg"
+level = "build"
+claim = "The rank equals the number of nonzero rows of the Bareiss echelon form."
+oracle = "Hand-checked matrices and random ones."
+
+[[id]]
+id = "LA-07"
+package = "mp-linalg"
+level = "build"
+claim = "The participation ratio of a probability vector is between 1 and its length, and equals the length of a uniform vector."
+oracle = "Hand-checked and random probability vectors."
+
+[[id]]
+id = "LI-01"
+package = "mp-lie"
+level = "build"
+claim = "The root systems A-G satisfy the root axioms: finite, spans, closed under reflection, and 2(a,b)/(a,a) integer."
+oracle = "The classification tables."
+authorities = ["bourbaki-lie", "humphreys-1972"]
+
+[[id]]
+id = "LI-02"
+package = "mp-lie"
+level = "build"
+claim = "The simple roots generate the whole root system under reflection."
+oracle = "The orbit of the simple roots equals the full system."
+
+[[id]]
+id = "LI-03"
+package = "mp-lie"
+level = "build"
+claim = "The Cartan matrix has the published entries."
+oracle = "Bourbaki / Humphreys tables."
+authorities = ["bourbaki-lie", "humphreys-1972"]
+
+[[id]]
+id = "LI-04"
+package = "mp-lie"
+level = "build"
+claim = "The Weyl group order equals the size of the orbit of a regular element, computed by orbit-stabilizer."
+oracle = "The published orders."
+authorities = ["bourbaki-lie", "humphreys-1972"]
+
+[[id]]
+id = "SQ-01"
+package = "mp-seq"
+level = "build"
+claim = "Berlekamp-Massey's polynomial regenerates the sequence it was built from, over any field."
+oracle = "Random sequences over GF(2) and Q."
+authorities = ["massey-1969"]
+
+[[id]]
+id = "SQ-02"
+package = "mp-seq"
+level = "build"
+claim = "The linear complexity is minimal: no shorter LFSR generates the sequence."
+oracle = "Brute force over GF(2)."
+authorities = ["massey-1969"]
+
+[[id]]
+id = "SQ-03"
+package = "mp-seq"
+level = "build"
+claim = "A length-l LFSR is recovered from 2l terms and predicts the rest."
+oracle = "Random LFSRs, Massey's theorem."
+authorities = ["massey-1969"]
+
+[[id]]
+id = "SQ-04"
+package = "mp-seq"
+level = "build"
+claim = "Primitive polynomials have the maximal period; non-primitive do not."
+oracle = "Hand-checked polynomials."
+
+[[id]]
+id = "SQ-05"
+package = "mp-seq"
+level = "build"
+claim = "The Fibonacci sequence has connection polynomial 1 - x - x^2; the zero sequence has complexity 0."
+oracle = "Hand-checked."
+
+[[id]]
+id = "AN-01"
+package = "mp-analytic"
+level = "build"
+claim = "The sieve produces the primes up to n."
+oracle = "Trial division."
+
+[[id]]
+id = "AN-02"
+package = "mp-analytic"
+level = "build"
+claim = "von Mangoldt and Chebyshev psi match their definitions."
+oracle = "Hand-checked values."
+
+[[id]]
+id = "AN-03"
+package = "mp-analytic"
+level = "build"
+claim = "The Bernoulli numbers match the von Staudt-Clausen denominators and the closed forms."
+oracle = "von Staudt-Clausen, OEIS."
+authorities = ["von-staudt-clausen"]
+
+[[id]]
+id = "AN-04"
+package = "mp-analytic"
+level = "build"
+claim = "zeta(s) by Euler-Maclaurin matches the closed forms for s = 2, 4, 6, 8."
+oracle = "Closed forms using this package's Bernoulli numbers."
+authorities = ["edwards-1974"]
+
+[[id]]
+id = "AN-05"
+package = "mp-analytic"
+level = "build"
+claim = "exp(i theta(t)) zeta(1/2 + it) is real to 1e-9 for t in [10, 800]."
+oracle = "The functional equation; 200 random t."
+authorities = ["edwards-1974"]
+
+[[id]]
+id = "AN-06"
+package = "mp-analytic"
+level = "build"
+claim = "The zeros of Z(t) located on (10, 827] are exactly the 512 tabulated zeros, each to 1e-8."
+oracle = "Odlyzko's table, committed under oracles/."
+authorities = ["odlyzko-zeros"]
+
+[[id]]
+id = "GT-00"
+package = "mp-gate"
+level = "build"
+claim = "A repository that keeps the rules produces no violations."
+oracle = "A synthetic clean repository."
+
+[[id]]
+id = "GT-01"
+package = "mp-gate"
+level = "build"
+claim = "R1 fires on a hand-edited CONFORMANCE.md, a duplicated ID and an unparsable model, and on nothing else."
+oracle = "Planted defects."
+
+[[id]]
+id = "GT-02"
+package = "mp-gate"
+level = "build"
+claim = "R2 fires on an open ID, an asserting word in an open claim, some-true with no authority and a citation of an unknown authority."
+oracle = "Planted defects."
+
+[[id]]
+id = "GT-03"
+package = "mp-gate"
+level = "build"
+claim = "R3 fires on an ID with no test and on a test tagged with an unregistered ID."
+oracle = "Planted defects."
+
+[[id]]
+id = "GT-04"
+package = "mp-gate"
+level = "build"
+claim = "R4 fires on a deferral marker and on a stub, and not on the same word in a comment or a string."
+oracle = "Planted defects and planted near-misses."
+
+[[id]]
+id = "GT-05"
+package = "mp-gate"
+level = "build"
+claim = "R5 fires on a partial function, a partial operator and a missing -Werror, and not on primed names, strings or comments."
+oracle = "Planted defects and planted near-misses."
+
+[[id]]
+id = "GT-06"
+package = "mp-gate"
+level = "build"
+claim = "R6 fires on an outside dependency, an unbounded boot dependency, an unlisted package and a re-enabled package repository."
+oracle = "Planted defects."
+
+[[id]]
+id = "GT-07"
+package = "mp-gate"
+level = "build"
+claim = "The TOML reader parses the subset the model uses and rejects what it cannot read."
+oracle = "Hand-written documents."

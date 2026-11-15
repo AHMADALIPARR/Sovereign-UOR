@@ -1,0 +1,22 @@
+# Claims with no ID, and so no test: reproduced facts and measured quantities.
+# These are the things the gate is allowed to leave open.
+
+[[entry]]
+key = "strassen-exponent"
+level = "some-true"
+statement = "Strassen's algorithm uses O(n^log2(7)) ring operations. This repository checks that it computes the product, not how fast."
+evidence = "Cited, not measured."
+authorities = ["strassen-1969"]
+
+[[entry]]
+key = "zeta-zeros-complete"
+level = "some-true"
+statement = "Odlyzko's table lists every non-trivial zero of zeta with imaginary part in (0, 826.91], and each lies on the critical line. Here the zeros are located independently and matched to the table (AN-06); completeness is the table's, not verified by Turing's method here."
+evidence = "oracles/zeta-zeros-odlyzko.txt"
+authorities = ["odlyzko-zeros"]
+
+[[entry]]
+key = "explicit-formula-truncation"
+level = "open"
+statement = "Error of the explicit formula under truncation of the zeros."
+evidence = "Not checked here."
