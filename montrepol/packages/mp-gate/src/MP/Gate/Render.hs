@@ -1,9 +1,14 @@
 -- | Render the model as CONFORMANCE.md.
 module MP.Gate.Render
   ( render
+  , renderConformance
   ) where
 
 import MP.Gate.Model
+
+-- | Alias expected by the CLI.
+renderConformance :: Model -> String
+renderConformance = render
 
 render :: Model -> String
 render m =

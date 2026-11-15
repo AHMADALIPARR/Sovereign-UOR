@@ -6,6 +6,7 @@ module MP.Gate.Model
   , LedgerEntry(..)
   , Model(..)
   , loadModel
+  , readModel
   ) where
 
 import MP.Gate.Toml
@@ -51,6 +52,10 @@ data Model = Model
   , modelLedger :: [LedgerEntry]
   }
   deriving (Eq, Show)
+
+-- | Alias expected by the CLI.
+readModel :: String -> String -> String -> Either String Model
+readModel idsSrc ledgerSrc authSrc = loadModel idsSrc authSrc "" ledgerSrc
 
 loadModel :: String -> String -> String -> String -> Either String Model
 loadModel idsSrc authSrc mutSrc ledSrc = do
