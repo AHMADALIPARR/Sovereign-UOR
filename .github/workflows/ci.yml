@@ -74,9 +74,9 @@ jobs:
         with:
           java-version: "21"
           distribution: graalvm
+          components: "native-image"
           github-token: ${{ secrets.GITHUB_TOKEN }}
           native-image-job-reports: "true"
-          cache: "native-image"
 
       - name: Install scala-cli
         run: |
