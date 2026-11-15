@@ -12,11 +12,11 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  SCALA_VERSION: 3.5.2
+  SCALA_VERSION: "3.5.2"
 
 jobs:
   # ------------------------------------------------------------------
-  # Fast path: compile kernel + run pure-Scala unit tests
+  # Fast path: pure kernel compile + munit tests (no GraalVM needed)
   # ------------------------------------------------------------------
   test:
     name: Compile & Test (JVM)
@@ -31,7 +31,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
+          java-version: "21"
 
       - name: Install scala-cli
         run: |
@@ -40,13 +40,13 @@ jobs:
           chmod +x /usr/local/bin/scala-cli
           scala-cli version
 
-      - name: Compile sources
+      - name: Compile kernel sources
         run: |
+          # Only the pure kernel – UorExports needs GraalVM classes
           scala-cli compile \
             --scala ${{ env.SCALA_VERSION }} \
             src/main/scala/uor/kernel/U64.scala \
-            src/main/scala/uor/kernel/Poly64.scala \
-            src/main/scala/uor/ffi/UorExports.scala
+            src/main/scala/uor/kernel/Poly64.scala
 
       - name: Run unit tests (munit)
         run: |
@@ -72,11 +72,11 @@ jobs:
       - name: Setup GraalVM + native-image
         uses: graalvm/setup-graalvm@v1
         with:
-          java-version: '21'
-          distribution: 'graalvm'
+          java-version: "21"
+          distribution: graalvm
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          native-image-job-reports: 'true'
-          cache: 'native-image'
+          native-image-job-reports: "true"
+          cache: "native-image"
 
       - name: Install scala-cli
         run: |
@@ -84,7 +84,7 @@ jobs:
             | gunzip > /usr/local/bin/scala-cli
           chmod +x /usr/local/bin/scala-cli
 
-      - name: Compile to class files
+      - name: Compile all sources (incl. FFI)
         run: |
           mkdir -p build
           scala-cli --power compile \
@@ -95,7 +95,7 @@ jobs:
             src/main/scala/uor/kernel/Poly64.scala \
             src/main/scala/uor/ffi/UorExports.scala
           echo "=== Class files ==="
-          find build -name '*.class' | head -30
+          find build -name '*.class' | sort
 
       - name: Build shared library with native-image
         run: |
@@ -109,7 +109,6 @@ jobs:
             --initialize-at-build-time=scala.runtime \
             --initialize-at-build-time=java.lang \
             --initialize-at-run-time=java.security.SecureRandom \
-            -H:Log=registerResource: \
             -H:+AllowIncompleteClasspath
 
       - name: Verify artifacts & symbols
@@ -118,7 +117,7 @@ jobs:
           ls -lh libuor* graal_isolate* 2>/dev/null || true
           file libuor.so
           echo "=== Exported UOR symbols ==="
-          nm -D --defined-only libuor.so 2>/dev/null | grep -E 'uor_' || echo "(nm symbols not listed – still ok if .so exists)"
+          nm -D --defined-only libuor.so 2>/dev/null | grep -E 'uor_' || echo "(symbols check optional)"
 
       - name: Upload native artifacts
         uses: actions/upload-artifact@v4
