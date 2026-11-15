@@ -1,0 +1,21 @@
+cabal-version:      3.0
+name:               mp-linalg
+version:            0.1.0.0
+synopsis:           Exact linear algebra over semirings, with dimensions in the type.
+license:            AGPL-3.0-or-later
+build-type:         Simple
+
+library
+  exposed-modules:  MP.Algebra
+                    MP.Matrix
+                    MP.Participation
+  hs-source-dirs:   src
+  build-depends:    base >=4.20 && <4.21, array >=0.5 && <0.6
+  default-language: GHC2021
+
+test-suite mp-linalg-test
+  type:             exitcode-stdio-1.0
+  main-is:          Main.hs
+  hs-source-dirs:   test
+  build-depends:    base >=4.20 && <4.21, mp-check, mp-linalg
+  default-language: GHC2021

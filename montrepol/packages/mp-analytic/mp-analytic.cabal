@@ -1,0 +1,28 @@
+cabal-version:      3.0
+name:               mp-analytic
+version:            0.1.0.0
+synopsis:           Primes, Chebyshev psi, Bernoulli numbers, zeta, its zeros, the explicit formula.
+license:            AGPL-3.0-or-later
+build-type:         Simple
+
+library
+  exposed-modules:  MP.Primes
+                    MP.Bernoulli
+                    MP.Zeta
+                    MP.ExplicitFormula
+  hs-source-dirs:   src
+  build-depends:    base >=4.20 && <4.21, array >=0.5 && <0.6
+  default-language: GHC2021
+
+executable mp-analytic-report
+  main-is:          Main.hs
+  hs-source-dirs:   app
+  build-depends:    base >=4.20 && <4.21, mp-analytic
+  default-language: GHC2021
+
+test-suite mp-analytic-test
+  type:             exitcode-stdio-1.0
+  main-is:          Main.hs
+  hs-source-dirs:   test
+  build-depends:    base >=4.20 && <4.21, mp-check, mp-analytic
+  default-language: GHC2021
