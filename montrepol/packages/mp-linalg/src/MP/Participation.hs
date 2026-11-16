@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+
 -- | Effective number of components, computed exactly.
 --
 -- For a non-zero positive semi-definite matrix @G@ with eigenvalues

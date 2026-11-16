@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+
 {-# LANGUAGE DataKinds #-}
 
 -- | Dense matrices with their dimensions in the type.
