@@ -33,17 +33,53 @@ untested claims, by package and honesty level. It is generated from [`model/`](m
 | Repository | Kept | Dropped, and why |
 | --- | --- | --- |
 | `matmul` | The claim discipline: levels, register, generated conformance, the rules | All of the Rust. There was no matrix multiplication in it; it was an empty template. `mp-linalg` is the matmul. |
-| `prism-ciris` | The integer kernel's ideas, done correctly: exact Kish k_eff and participation ratio (`mp-linalg`), GF(2) recurrences done properly with Berlekamp–Massey (`mp-seq`), E8 (`mp-lie`) | The ethics, governance and "atlas" prose, the 188 vocabulary files and the `.lex.tex` "proofs": 200 of 223 files contained no mathematics. |
-| `uor` | The honesty of saying what is not shown: open claims stay open | Everything that was not a mathematical claim. |
-| `zeta` | The analytic number theory | The Python, the notebooks, the approximate floating-point. |
-| `lie` | The root systems | The Sage dependency. |
+| `prism-ciris` | The integer kernel's ideas, done correctly: exact Kish k_eff and participation ratio (`mp-linalg`), GF(2) recurrences done properly with Berlekamp–Massey (`mp-seq`), E8 (`mp-lie`) | The ethics, governance and "atlas" prose, the 188 vocabulary files and the `.lex.tex` "proofs": 200 of 223 theorems had no parameters, 196 were `decide` on constants, and no CI step ran Lean. See below for the two defects found in its kernel. |
+| `prime-router` | ψ(x), the projection of ψ(x) − x onto zeta zeros, now as the explicit formula with measured error (`mp-analytic`); its zero table, as an oracle | "Hypersphere brain", Λ − π, "hyperbolic deficit", GloVe, the Ollama server. The table file was named `100k` and held 512 rows. |
+| `cluster` | Not yet | 22k lines of infrastructure rendering. Porting it means byte-for-byte golden tests against its `generated/`, and it only means something with the hardware. |
+| `jsonschema` | Not yet | A fork of an actively maintained upstream. A Haskell validator is a large, separate piece of work, with the official JSON-Schema-Test-Suite as its oracle. |
 
-## Honesty
+### Defects found in the prism-ciris kernel
 
-Every claim is one of three levels:
+Both were reproduced by compiling the original functions on their own before
+anything here was written:
 
-- **build** — a test can fail. The CI runs it.
-- **some-true** — cited to a named authority that exists in the register. Not re-proved here.
-- **open** — stated and left untested. The gate forbids asserting language on an open claim.
+1. `check_integer_kish_keff` used saturating `u64` arithmetic and was described
+   as overflow-free. For weights `[2^32, 2^32]`, whose effective size is exactly
+   2, it accepted `min_keff = 3` and `min_keff = 1000`. Here the comparison is
+   over unbounded integers (LA-08), and a mutant that reintroduces 64-bit
+   saturation is caught.
+2. `evaluate_gram_ratchet`'s comment said `tr(G)^2 >= 2 ||G||_F^2`, but for a
+   2×2 positive semi-definite matrix that holds only when `G` is a multiple of
+   the identity, since `(l1 + l2)^2 <= 2 (l1^2 + l2^2)`. The code checked
+   `4 tr^2 >= 7 ||G||_F^2` instead. Here the participation ratio
+   `tr(G)^2 / tr(G^2)` is shown to lie in `[1, 2]` and to equal 2 exactly for
+   scalar matrices (LA-10).
 
-A mutant that is not caught by the test that names it fails the honesty workflow.
+## How claims work
+
+Every claim has one of three levels, and the gate fails if they blur:
+
+- **`some-true`**: reproduced from a cited authority. Not established here.
+- **`build`**: constructed here and checked by a test against an oracle.
+  Evidence, not proof.
+- **`open`**: measured and reported. Never asserted.
+
+Asserting words ("proves", "guarantees", "establishes", ...) may not appear in
+a `build` or `open` claim, and the gate checks that. Property tests over random inputs are evidence; they are
+not proofs, and this repository does not call them that.
+
+[`AGENTS.md`](AGENTS.md) defines the rules. [`VERIFICATION.md`](VERIFICATION.md)
+says what each gate discharges and records the defects planted to show it can
+fail.
+
+## Toolchain
+
+GHC 9.10.1 and cabal 3.12.1.0, installed with `ghcup`. `libgmp` is needed to
+link. `cabal.project` sets `active-repositories: :none`: a dependency from
+outside the compiler cannot even be resolved, and the build needs no network.
+
+## Licence
+
+GNU Affero General Public License v3.0 or later ([`LICENSE`](LICENSE)). Parts
+adapted from the UOR Foundation's template keep their MIT / Apache-2.0 notices;
+see [`NOTICE`](NOTICE).

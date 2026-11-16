@@ -1,51 +1,52 @@
-# Authorities cited by the model. Every some-true claim names one of these.
-# Generated and checked by the gate; do not edit by hand without updating the
-# corresponding citation.
+# model/authorities.toml --- sources this repository reproduces facts from.
+#
+# Every entry must be cited by at least one ID or ledger row (R2), and every
+# citation must name an entry here.
 
 [[authority]]
-id = "bourbaki-lie"
-title = "Nicolas Bourbaki, Groupes et algèbres de Lie, ch. IV–VI"
-year = 1968
-note = "Classification of irreducible root systems."
+key = "steele-2014"
+cite = "G. L. Steele, D. Lea, C. H. Flood. Fast splittable pseudorandom number generators. OOPSLA 2014. (SplitMix64; constants as in Java's SplittableRandom.)"
 
 [[authority]]
-id = "humphreys-1972"
-title = "James E. Humphreys, Introduction to Lie Algebras and Representation Theory"
-year = 1972
-note = "Cartan matrices and Weyl group orders."
+key = "strassen-1969"
+cite = "V. Strassen. Gaussian elimination is not optimal. Numerische Mathematik 13 (1969) 354-356."
 
 [[authority]]
-id = "massey-1969"
-title = "James L. Massey, Shift-register synthesis and BCH decoding"
-year = 1969
-note = "Berlekamp–Massey algorithm and the 2L theorem."
+key = "bareiss-1968"
+cite = "E. H. Bareiss. Sylvester's identity and multistep integer-preserving Gaussian elimination. Mathematics of Computation 22 (1968) 565-578."
 
 [[authority]]
-id = "edwards-1974"
-title = "H. M. Edwards, Riemann's Zeta Function"
-year = 1974
-note = "Euler–Maclaurin, Riemann–Siegel, functional equation."
+key = "kish-1965"
+cite = "L. Kish. Survey Sampling. Wiley, 1965. (Effective sample size.)"
 
 [[authority]]
-id = "odlyzko-zeros"
-title = "Andrew Odlyzko, Tables of zeros of the Riemann zeta function"
-year = 1987
-note = "First 2 000 000 zeros; the committed oracle uses the first 512."
+key = "humphreys-1990"
+cite = "J. E. Humphreys. Reflection Groups and Coxeter Groups. Cambridge University Press, 1990. Sections 2.10-2.11 and 3.7 (orders and degrees)."
 
 [[authority]]
-id = "strassen-1969"
-title = "Volker Strassen, Gaussian elimination is not optimal"
-year = 1969
-note = "Matrix multiplication in O(n^{log_2 7}) ring operations."
+key = "bourbaki-lie-4-6"
+cite = "N. Bourbaki. Lie Groups and Lie Algebras, Chapters 4-6. Springer, 2002. Plates I-IX (root counts, Cartan matrices)."
 
 [[authority]]
-id = "bareiss-1968"
-title = "Erwin H. Bareiss, Sylvester's identity and multistep integer-preserving Gaussian elimination"
-year = 1968
-note = "Exact integer determinant."
+key = "massey-1969"
+cite = "J. L. Massey. Shift-register synthesis and BCH decoding. IEEE Transactions on Information Theory 15 (1969) 122-127."
 
 [[authority]]
-id = "von-staudt-clausen"
-title = "von Staudt–Clausen theorem"
-year = 1840
-note = "Denominators of Bernoulli numbers."
+key = "lidl-niederreiter-1997"
+cite = "R. Lidl, H. Niederreiter. Finite Fields, 2nd ed. Cambridge University Press, 1997. Chapter 8 (linear recurring sequences, periods)."
+
+[[authority]]
+key = "oeis-a006880"
+cite = "OEIS A006880: number of primes below 10^n."
+
+[[authority]]
+key = "ireland-rosen-1990"
+cite = "K. Ireland, M. Rosen. A Classical Introduction to Modern Number Theory, 2nd ed. Springer, 1990. Chapter 15 (Bernoulli numbers, von Staudt-Clausen)."
+
+[[authority]]
+key = "edwards-1974"
+cite = "H. M. Edwards. Riemann's Zeta Function. Academic Press, 1974. Chapter 3 (explicit formula), 6.4 (Euler-Maclaurin), 6.5 (Riemann-Siegel theta)."
+
+[[authority]]
+key = "odlyzko-zeros"
+cite = "A. M. Odlyzko. Tables of zeros of the Riemann zeta function, file zeros1. https://www-users.cse.umn.edu/~odlyzko/zeta_tables/"
