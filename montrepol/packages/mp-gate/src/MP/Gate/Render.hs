@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+
 -- | @CONFORMANCE.md@, generated from the model and never edited (R1).
 module MP.Gate.Render (renderConformance) where
 
@@ -18,6 +20,8 @@ renderConformance (Model rows claims auths) =
     , "| `some-true` | reproduced from an authority. **Not established here.** |"
     , "| `build` | constructed here and checked against an oracle by a test. Evidence, not proof. |"
     , "| `open` | measured and reported. **Never asserted.** |"
+    , "| `proved` | machine-checked by Agda under `--safe`, with no postulates. The evidence names the file and lemmas. Trusts Agda's kernel. |"
+    , "| `refined` | checked by Liquid Haskell. The evidence names a core source and the functions whose specs were checked. Trusts Liquid Haskell and Z3. |"
     , ""
     , "## Register"
     , ""

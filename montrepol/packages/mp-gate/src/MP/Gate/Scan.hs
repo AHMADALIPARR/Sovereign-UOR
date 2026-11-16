@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+
 -- | Just enough Haskell lexing to audit sources: strip comments and literals,
 -- split identifiers and operators, and find the conformance IDs that tests
 -- are tagged with.

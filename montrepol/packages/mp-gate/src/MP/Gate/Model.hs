@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+
 -- | The claim register, the ledger and the authorities, read from
 -- @model/*.toml@.
 module MP.Gate.Model
@@ -17,7 +19,12 @@ import MP.Gate.Toml
 -- * 'SomeTrue': reproduced from an authority; not established here.
 -- * 'Build': constructed here and checked against an oracle; evidence, not proof.
 -- * 'Open': measured and reported, never asserted.
-data Level = SomeTrue | Build | Open
+-- * 'Proved': machine-checked by Agda under @--safe@; the evidence names the
+--   file and the lemmas. Trusts Agda's kernel.
+-- * 'Refined': checked by Liquid Haskell; the evidence names a core source
+--   file and the functions whose @{-\@ ... \@-}@ specs were checked. Trusts
+--   Liquid Haskell and Z3, a larger base than 'Proved', so kept apart.
+data Level = SomeTrue | Build | Open | Proved | Refined
   deriving (Eq, Show)
 
 levelName :: Level -> String
@@ -25,12 +32,16 @@ levelName l = case l of
   SomeTrue -> "some-true"
   Build -> "build"
   Open -> "open"
+  Proved -> "proved"
+  Refined -> "refined"
 
 parseLevel :: String -> Maybe Level
 parseLevel s = case s of
   "some-true" -> Just SomeTrue
   "build" -> Just Build
   "open" -> Just Open
+  "proved" -> Just Proved
+  "refined" -> Just Refined
   _ -> Nothing
 
 -- | A row of @model/ids.toml@: one conformance ID.
