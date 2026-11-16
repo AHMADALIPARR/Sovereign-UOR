@@ -4,84 +4,93 @@
 [![honesty](https://github.com/AHMADALIPARR/Sovereign-UOR/actions/workflows/honesty.yml/badge.svg)](https://github.com/AHMADALIPARR/Sovereign-UOR/actions/workflows/honesty.yml)
 [![dex-oracle](https://github.com/AHMADALIPARR/Sovereign-UOR/actions/workflows/dex-oracle.yml/badge.svg)](https://github.com/AHMADALIPARR/Sovereign-UOR/actions/workflows/dex-oracle.yml)
 
-## Documents
+This README describes everything in the repository at commit `ee9176b`
+(2026-11-15). Line numbers ("line 12", "lines 15-45", or a bare number in
+parentheses) refer to the file named in the heading or sentence around them.
+Every number was measured on the build machine (GHC 9.10.1, cabal 3.12.1.0,
+Scala 3.5.2 on Java 21, Dex at commit `25e2e389`) or read from a GitHub
+Actions log. Nothing is estimated.
 
-| Document | Contents |
-|---|---|
-| [docs/REPO.md](docs/REPO.md) | The file-by-file section below, as a separate document |
-| [docs/README-audit.md](docs/README-audit.md) | Every claim of the old README checked against the code; truncation, fabrication, test and mutant audit |
-| [docs/dex-oracle.md](docs/dex-oracle.md) | What the Dex programs compute, how they are compared, measured agreement |
-| [docs/README-original.md](docs/README-original.md) | The README as it was at commit `5db9b38` |
-| [docs/workflows-original/](docs/workflows-original/) | The workflows as they were before the CI fix |
+## 1. What is here
 
-One earlier per-file document also exists:
-
-| File | Document |
-|---|---|
-| `src/main/scala/uor/kernel/Poly64.scala` | [docs/files/src/main/scala/uor/kernel/Poly64.scala.md](docs/files/src/main/scala/uor/kernel/Poly64.scala.md) |
-
-## The repository, file by file
-
-
-This document describes every file in the repository at commit `67948e5`
-(2026-11-15), what it does, how the files depend on each other, how to build
-and test them, and what was found when they were checked. Line numbers ("line 12", "lines 15-45", or a bare number in parentheses)
-refer to the file named in the enclosing heading or paragraph, in that commit. All numbers were measured on
-the build machine (GHC 9.10.1, cabal 3.12.1.0, Scala 3.5.2 on Java 21,
-Dex at commit `25e2e389`) or read from GitHub Actions logs. The detailed
-claim-by-claim audit is in [docs/README-audit.md](docs/README-audit.md); this document
-summarises it where a file is affected and does not repeat its tables.
-
-### 1. Overview
-
-The repository holds four things:
-
-| Part | Language | Files | State |
+| Directory | Language | Files | State at `ee9176b` |
 |---|---|---|---|
-| `src/` | Scala 3 | 4 | Compiles; 8 unit tests pass. |
-| `montrepol/` | Haskell | 48 | As committed by the author, plus one added file, the corrected zeta table. Does not compile. |
-| `montrepol_checked/` | Haskell | 38 | Corrected copy of `montrepol/`. Builds with `-Werror`, 80 tests pass, gate holds, 10 of 10 mutants caught. |
-| `dex/` | Dex, Scala, Haskell | 4 | Dual oracle. 600/600 and 200/200 lines agree in CI. |
+| `src/` | Scala 3 | 4 | `Poly64`, polynomials over Z/2^64, with a C ABI. Compiles; 8 unit tests pass. |
+| `montrepol/` | Haskell | 50 | The author's monorepo, restored from his own zip in commits `6c15b61`..`ee9176b`, plus one file added earlier (`oracles/zeta-zeros-odlyzko_checked.txt`). Builds with `-Werror`; 171 tests pass; the gate holds; 13 of 13 mutants are caught. |
+| `montrepol_checked/` | Haskell | 38 | A corrected copy of an earlier, fabricated `montrepol/`. It builds and passes its own 80 tests, but it is **not** derived from the real code. See section 2. |
+| `dex/` | Dex, Scala, Haskell | 4 | A second implementation, in Dex, of Poly64 arithmetic and of the determinant. The Poly64 half checks `src/`; the determinant half checks `montrepol_checked/`, not the restored tree. |
+| `.github/workflows/` | YAML | 3 | `ci.yml`, `honesty.yml`, `dex-oracle.yml`. All green on `ee9176b`. |
+| `docs/` | Markdown, text | 7 | Audit, file-by-file notes, Dex notes, the README and workflows as they were before. Several are now stale (section 2). |
 
-Around them: three workflows in `.github/workflows/`, documents in `docs/`,
-the AGPL text in `LICENSE`, and `README.md`.
+The root also holds `LICENSE` (the AGPL v3 text, 661 lines), `.gitignore`
+(28 lines) and this file. The license line is at the end.
 
-The two original trees share no code. The Scala tree implements polynomials
-over Z/2^64 and exposes them through a C ABI. The Haskell tree implements
-exact linear algebra, root systems, linear recurrences and some analytic
-number theory, with a "claim discipline": every claim is registered in TOML
-files, tied to a test by an ID, and checked by a gate program. The Dex
-programs re-implement one computation from each tree and are compared line
-by line with them.
+The Scala and Haskell trees share no code. The Scala tree is a small kernel
+for sparse polynomials over Z/2^64, exported through GraalVM native-image.
+The Haskell tree, `montrepol`, is exact mathematics (linear algebra over
+semirings, root systems, linear recurrences, primes, Bernoulli numbers, the
+zeta function and its zeros) under a claim discipline: every claim is a row
+in a TOML register, each row is tied to tagged tests, a gate program checks
+six rules, and planted defects ("mutants") show that the tests can fail.
 
-Nothing in the original files was edited. Corrections live beside the
-originals: the Haskell tree as `montrepol_checked/`, the zeta oracle as
-`montrepol/oracles/zeta-zeros-odlyzko_checked.txt`, the old README as
-`docs/README-original.md`, and the old workflows under
-`docs/workflows-original/`.
+### Measured state of the restored `montrepol/`
 
-### 2. Root files
+Run on the build machine in a clean checkout of `ee9176b`, each step under
+`nohup` with `-j1`, output tee'd to a log and the exit code saved:
 
-**`README.md`** (103 lines). The overview: what each tree is, the measured
-state, the layout, build commands, the document index (including the per-file
-document listed in section 9) and the license line. It replaced the original
-README, which is kept verbatim in `docs/README-original.md`.
+| Command | Exit code | Result |
+|---|---|---|
+| `cabal update` | 0 | index fetched (the project has no repositories, but cabal 3.12 still wants an index file) |
+| `cabal build all -j1` | 0 | all six packages, test suites and executables build; 0 warnings under `-Werror` |
+| `cabal test all -j1 --test-show-details=direct` | 0 | 171 tests pass, 0 fail: mp-analytic 10, mp-check 5, mp-gate 23, mp-lie 106, mp-linalg 19, mp-seq 8 |
+| `cabal run -j1 mp-gate` | 0 | `mp-gate: R1-R6 hold over 6 packages` |
+| `cabal run -j1 mp-gate -- mutants` | 0 | `13 of 13 mutants caught`; `git status` clean afterwards |
+| `cabal run mp-gate -- write` then `git diff --exit-code CONFORMANCE.md` | 0, 0 | the committed register is exactly what the model generates |
+| `cabal run mp-analytic-report` | 0 | 512 zeros found on (10, 827]; error table identical to `model/ledger.toml:28`; 2.4 s wall time |
 
-**`LICENSE`** (661 lines). The GNU Affero General Public License version 3,
-fetched from gnu.org. It is byte-identical to `montrepol/LICENSE` and ends
-with the "How to Apply These Terms" section. The license line in the README
-reads "AGPL-3.0-only OR LicenseRef-SnapKitty-Opaque-1.0".
+All tests ran with the default seed `0x5eed` (printed as `seed 24301`). The
+numbers the montrepol README states, 171 checks (`montrepol/README.md:12`),
+13 planted defects (`:14`) and 39 conformance IDs (`:28`), all match what the
+code produces.
 
-**`.gitignore`** (28 lines). Ignores build output for the Scala side
-(`build/`, `target/`, class and jar files, shared libraries, `libuor.*`,
-`graal_isolate*`, `*.h`; lines 1-11), editor and OS files (lines 13-17), Metals/Bloop/BSP
-directories (lines 19-24) and `.scala-build/` (line 27). `.bsp/` appears
-twice (lines 22 and 28), which is harmless. Haskell build output is ignored
-by `montrepol/.gitignore` and `montrepol_checked/.gitignore` instead.
+## 2. Read this first: what is stale
 
-### 3. The Scala tree (`src/`)
+Until commit `6c15b61`, `montrepol/` on GitHub was not the author's code. It
+was a shorter, fabricated version with 34 IDs, 10 mutants, a broken build
+and a zeta table that was mostly wrong. Commits `6c15b61` to `ee9176b` (nine
+commits, 2026-11-15 18:09-18:10 PST) replaced 33 files and added
+`montrepol/.github/workflows/ci.yml` and `honesty.yml`; a fresh clone matches
+the author's zip byte for byte on all 49 files. The other 14 were already
+identical and did not change: `.gitignore`, `LICENSE`, `cabal.project`, the
+six `.cabal` files, `MP/Check/Random.hs`, the `mp-check` tests, the gate's
+`app/Main.hs`, and the source and tests of `mp-seq`.
 
-#### 3.1 `src/main/scala/uor/kernel/Poly64.scala` (185 lines)
+Several things in this repository were built from the fabricated version.
+They are left as they are, unedited, and listed here so nobody relies on
+them:
+
+| File or directory | Built from | What is stale |
+|---|---|---|
+| `montrepol_checked/` (38 files) | the fabricated `montrepol/` | Everything except the files that happen to equal the real ones (`.gitignore`, `cabal.project`, `MP/Check/Random.hs`, the mp-check tests, the gate's `app/Main.hs`, and the `.cabal` files of mp-analytic, mp-check, mp-gate, mp-linalg, mp-seq). Its code, 34-ID model, 10 mutants and `CONFORMANCE.md` describe fixes to code that was never the author's. It still builds and passes its own tests. |
+| `montrepol_checked/model/ledger.toml:15` | the fabricated oracle | Says the original zeta table "does not match published values". The restored table matches them exactly (section 4.8). |
+| `montrepol/oracles/zeta-zeros-odlyzko_checked.txt` | LMFDB | Not wrong, but now redundant: its 512 data rows are byte-identical to the restored `zeta-zeros-odlyzko.txt`. Only `montrepol_checked` reads it. |
+| `dex/haskell/BareissVectors.hs` | `montrepol_checked` | Imports the untyped `MP.Matrix` of `montrepol_checked`. Compiled against the restored `mp-linalg` it fails at line 33: `fromLists` now returns `Maybe (Matrix m n a)`. So the Dex determinant check covers `montrepol_checked`, not the author's Bareiss. |
+| `.github/workflows/dex-oracle.yml:13-14, 21-22, 60-65` | `montrepol_checked` | Path filters and the determinant step point at `montrepol_checked`. |
+| `.github/workflows/ci.yml:105-106, 138-139` | the fabricated tree | Comments say `montrepol/` "does not compile" and is "expected to fail". On `ee9176b` the job built it successfully (CI run 71). |
+| `.github/workflows/honesty.yml` | `montrepol_checked` | Replays `montrepol_checked`'s 10 mutants, not the author's 13. |
+| `docs/README-audit.md` | the fabricated tree | Every finding about `montrepol/` (build failures, 426 wrong zeta rows, "171", "39", "13" called unproduced, wrong tests, missing names) describes the fabricated files. Its Scala findings (section 2 on `UorExports`) still hold. |
+| `docs/REPO.md` | the fabricated tree | Sections 4, 5, 8 and the `montrepol` rows of its appendix. Its Scala, Dex-Poly64 and workflow sections still hold. |
+| `docs/dex-oracle.md` | `montrepol_checked` | Accurate about what it measured, but the determinant side is `montrepol_checked`'s code. |
+
+Not stale: `src/`, `dex/poly64.dx`, `dex/scala/Poly64Vectors.scala`,
+`dex/det.dx` (it implements Leibniz on its own), `LICENSE`,
+`docs/README-original.md` (a verbatim historical copy),
+`docs/workflows-original/`, and
+`docs/files/src/main/scala/uor/kernel/Poly64.scala.md`.
+
+## 3. The Scala tree (`src/`)
+
+### 3.1 `src/main/scala/uor/kernel/Poly64.scala` (185 lines)
 
 The core type: `final case class Poly64 private (numVars, exps, coeffs)`
 (line 11), a polynomial in `numVars` variables with coefficients in Z/2^64,
@@ -136,14 +145,14 @@ Measured behaviour (details and the probe program in
 The file compiles without warnings. It contains no placeholders and is
 complete.
 
-#### 3.2 `src/main/scala/uor/kernel/U64.scala` (8 lines)
+### 3.2 `src/main/scala/uor/kernel/U64.scala` (8 lines)
 
 `final case class U64(value: Long) extends AnyVal` (line 5), a value class
 whose `toString` prints the unsigned decimal value via
 `java.lang.Long.toUnsignedString` when the bit pattern is negative (lines 6-8). It is the
 return type of `Poly64.eval`. Nothing else.
 
-#### 3.3 `src/main/scala/uor/ffi/UorExports.scala` (111 lines)
+### 3.3 `src/main/scala/uor/ffi/UorExports.scala` (111 lines)
 
 GraalVM native-image entry points, each a `@scala.annotation.static` method
 with `@CEntryPoint(name = ...)` and an `IsolateThread` first argument:
@@ -160,11 +169,11 @@ on Z/2^64 (a reflection `x ↦ ~x = −1 − x` optionally followed by a
 translation). `len` is narrowed with `.toInt` (lines 28 and 50), so buffers
 of 2^31 words or more are not handled. The original README listed three
 exports with different argument names (`stride`, `direction`); there are four
-(see the audit, section 2). The file is compiled only in the non-blocking
+(see `docs/README-audit.md`, section 2, whose Scala findings still hold). The file is compiled only in the non-blocking
 `native-image` job of `ci.yml`, which succeeded in CI run 52; no test calls
 these functions.
 
-#### 3.4 `src/test/scala/uor/kernel/Poly64Test.scala` (83 lines)
+### 3.4 `src/test/scala/uor/kernel/Poly64Test.scala` (83 lines)
 
 Eight munit tests (`//> using dep org.scalameta::munit::1.0.0`, line 2):
 zero polynomial (9-12), addition merging and cancelling (14-26), wrapping
@@ -175,473 +184,375 @@ at 2 equals 13 (76-82). No test multiplies two multi-term polynomials, pins
 a digest value or checks `==`. The Dex oracle covers multi-term products and
 evaluation (section 6). All eight pass in CI (job "Scala Compile & Test").
 
-### 4. The original Haskell tree (`montrepol/`)
+## 4. The Haskell monorepo (`montrepol/`)
 
-#### 4.1 Layout and project files
+Restored from the author's zip. Everything in this section was re-read at
+`ee9176b`; nothing is carried over from earlier notes.
 
-`montrepol/cabal.project` (25 lines) lists six packages (lines 7-13), pins
-`with-compiler: ghc-9.10.1` (line 15), disables every package repository with
-`active-repositories: :none` (line 20), enables tests (line 22) and sets
-`-Wall -Wcompat -Wincomplete-uni-patterns -Wincomplete-record-updates
--Wredundant-constraints -Werror` for every package (lines 24-25). Even with
-no repository, cabal 3.12 still needs a package index file, so `cabal update`
-must be run once before the first build; the original `honesty.yml` did not
-do this.
+### 4.1 Project files
 
-The six `.cabal` files all declare `version: 0.1.0.0` (line 3) and depend on
-`base >=4.20 && <4.21` plus boot packages:
+- `cabal.project` (25 lines): six packages (lines 7-13), `with-compiler:
+  ghc-9.10.1` (15), `active-repositories: :none` (20), `tests: True` (22), and
+  `-Wall -Wcompat -Wincomplete-uni-patterns -Wincomplete-record-updates
+  -Wredundant-constraints -Werror` for every package (24-25). No dependency
+  can come from Hackage; the build needs only GHC's boot libraries.
+- Six `.cabal` files, all `version: 0.1.0.0`, all `base >=4.20 && <4.21`.
+  `mp-check` (20 lines) depends on base only. `mp-linalg` (21) adds `array`.
+  `mp-lie` (19) adds `containers`, and its test suite also `mp-linalg` (line 18). `mp-seq` (19) depends on
+  `mp-linalg`. `mp-analytic` (28) adds `array` and defines the executable
+  `mp-analytic-report`. `mp-gate` (30) has a library on base only and an
+  executable adding `directory`, `filepath` and `process`.
+- `.gitignore` (11 lines) ignores `dist-newstyle/` and editor files.
+- `.devcontainer/devcontainer.json` (17 lines): Ubuntu 24.04 base image, the
+  Haskell VS Code extension, and a `postCreateCommand` that installs
+  `libgmp-dev` and GHC 9.10.1 with cabal 3.12.1.0 through ghcup (line 16).
 
-| Package | Library depends on | Test suite depends on | Problem |
-|---|---|---|---|
-| `mp-check` (20 lines) | base | base, mp-check | none |
-| `mp-linalg` (21 lines) | base, array | base, mp-check, mp-linalg | none in the cabal file |
-| `mp-lie` (19 lines) | base, containers | + mp-check, mp-lie, mp-linalg | library imports `MP.Algebra` and `MP.Matrix` (`RootSystem.hs:17-18`) without `mp-linalg` in its `build-depends` (`mp-lie.cabal:11`) |
-| `mp-seq` (19 lines) | base, mp-linalg | + mp-check, mp-seq | none |
-| `mp-analytic` (28 lines) | base, array | + mp-check, mp-analytic; an executable depends on base and mp-analytic | library imports `MP.Algebra` (`Bernoulli.hs:8`, `Primes.hs:10`) without `mp-linalg` |
-| `mp-gate` (30 lines) | base | executable adds directory, filepath, process | none in the cabal file |
+### 4.2 The author's own documents
 
-`montrepol/.devcontainer/devcontainer.json` (13 lines) uses the
-`haskell:9.10.1` image and runs `cabal update || true` after creation.
-`montrepol/.gitignore` (11 lines) ignores `dist-newstyle/` and similar.
+- `README.md` (85 lines). The commands and their counts (lines 10-15), a
+  package table (19-26), where the code came from (31-39: five earlier
+  repositories, `matmul`, `prism-ciris`, `prime-router`, `cluster`,
+  `jsonschema`, and what was kept or dropped from each), two defects found in
+  the `prism-ciris` kernel (41-56), the three honesty levels (58-73), the
+  toolchain (75-79) and the licence (81-85). The two defects: a Kish
+  effective-size check using saturating 64-bit arithmetic, which for weights
+  `[2^32, 2^32]` accepted `min_keff = 3` (46-50), now LA-08; and a comment
+  claiming `tr(G)^2 >= 2 ||G||_F^2` for 2x2 PSD matrices, which holds only for
+  multiples of the identity (51-56), now LA-10. Both tests pass.
+- `AGENTS.md` (67 lines). Rules R1-R6 (14-21), the order for adding a
+  capability (23-35: register row, failing test, implementation, mutant,
+  regenerate), how to choose an oracle (37-50: an independent algorithm,
+  then a theorem, then a published table; never a function against itself),
+  and why the scanner spells forbidden names in halves (60-62).
+- `VERIFICATION.md` (77 lines). What each command discharges (5-11), the
+  planted rule violations the gate's own tests use (13-26), two real
+  violations the gate found on its first run (`maximum` in `MP.Matrix` and in
+  the report, 28-30), the 13 mutants with the IDs that catch them (32-53),
+  two holes the mutants exposed and how they were closed (LI-01 was vacuous,
+  CK-02 did not call the runner; 55-63), and what the suite does not
+  establish (65-77: no proofs, floating point is not interval arithmetic,
+  completeness of the zeros is Odlyzko's, the explicit-formula error is
+  measured, not bounded). The "caught by" column (39-53) lists more IDs than
+  `model/mutants.toml` requires; the replay output in section 4.10 shows those
+  extra IDs do fail too.
+- `CONFORMANCE.md` (109 lines), generated by `cabal run mp-gate -- write`
+  from `model/`: the three levels, a register of 39 IDs, the ledger and the
+  12 authorities. Regenerating it changes nothing.
+- `NOTICE` (26 lines), `LICENSE` (661 lines, AGPL v3 text),
+  `LICENSES/UOR-template-MIT.txt` (21) and `UOR-template-Apache-2.0.txt`
+  (176): copyright, the "or later" grant, and the template notices for the
+  parts of the claim discipline adapted from UOR-Foundation/template.
+- `.github/workflows/ci.yml` (32 lines) and `honesty.yml` (29 lines): the
+  author's own workflows. `ci.yml` runs `cabal build all`, `cabal test all`,
+  `cabal run mp-gate` and `mp-gate -- write && git diff --exit-code
+  CONFORMANCE.md` (27-32); `honesty.yml` builds, runs `mp-gate -- mutants` and
+  `git diff --exit-code` (26-29). GitHub only runs workflows under the
+  repository root's `.github/`, so these two do not run here as committed;
+  neither runs `cabal update` first. Section 7 says which of these steps the
+  root workflows cover.
 
-#### 4.2 Documents inside the tree
+### 4.3 The model (`model/`)
 
-- `montrepol/README.md` (49 lines). Claims "171 checks across 6 packages"
-  (line 12), "13 planted defects" (line 14) and "all 39 conformance IDs"
-  (line 28). The repository has 51 tagged test lines in the original tests,
-  10 mutants, and 34 IDs (plus 3 ledger entries); no run produces 171 because
-  nothing compiles. The packages table (lines 19-26) describes "matrices with dimensions in the
-  type" (line 22), which `Matrix.hs` does not have, and names Floyd–Warshall
-  and OEIS as oracles (lines 22 and 25), which no test uses.
-- `montrepol/AGENTS.md` (30 lines). Defines rules R1-R6 (lines 14-21) and the
-  change procedure (lines 25-28).
-- `montrepol/VERIFICATION.md` (14 lines). How each rule is enforced (lines
-  5-12) and what the honesty workflow does (line 14). R1 there says the gate
-  "fails if the committed file differs"; the original `Rules.hs` never reads
-  `CONFORMANCE.md`.
-- `montrepol/CONFORMANCE.md` (77 lines). The rendered register: 34 ID rows
-  under six package headings and 3 ledger rows (lines 69-77). Several rows
-  claim more than the original tests check (AN-04 s = 2..8, AN-05 200 random
-  t to 1e-9, AN-06 512 zeros to 1e-8, LA-02/03/04 shapes and rings).
-- `montrepol/NOTICE` (21 lines), `montrepol/LICENSE` (661 lines, AGPL v3 text),
-  `montrepol/LICENSES/UOR-template-Apache-2.0.txt` (176 lines) and
-  `UOR-template-MIT.txt` (21 lines): copyright and template notices, kept as
-  they are.
+- `ids.toml` (301 lines): 39 `[[id]]` rows, all at level `build`: CK-01..04,
+  LA-01..10, LI-01..06, SQ-01..05, AN-01..06, GT-00..07. Each row names its
+  package, claim, oracle and, where relevant, authorities.
+- `authorities.toml` (52 lines): 12 entries (lines 6-51): Steele, Lea and
+  Flood 2014 (SplitMix64); Strassen 1969; Bareiss 1968; Kish 1965;
+  Humphreys 1990; Bourbaki, Lie groups ch. 4-6; Massey 1969; Lidl and
+  Niederreiter 1997; OEIS A006880; Ireland and Rosen 1990; Edwards 1974;
+  Odlyzko's `zeros1`.
+- `ledger.toml` (29 lines): three claims with no test. `strassen-exponent`
+  (12-14, `some-true`), `zeta-zeros-complete` (19-21, `some-true`: the
+  table's completeness to 826.91 is Odlyzko's, not checked here), and
+  `explicit-formula-truncation` (26-28, `open`), whose statement records
+  max |err|/sqrt(x) of 0.529, 0.317, 0.199 and 0.112 for M = 0, 10, 100 and
+  512 zeros. `mp-analytic-report` reproduces exactly these values (section
+  4.9).
+- `mutants.toml` (112 lines): 13 mutants (section 4.10).
 
-#### 4.3 The model (`montrepol/model/`)
+The register, with the test lines in `packages/<package>/test/Main.hs`
+that carry each tag. All 39 rows are at level `build`.
 
-- `ids.toml` (263 lines): 34 `[[id]]` tables, each with `id`, `package`,
-  `level`, `claim`, `oracle` and optionally `authorities`. Prefixes: CK-01..04,
-  LA-01..07, LI-01..04, SQ-01..05, AN-01..06, GT-00..07. CK-04 cites
-  `steele-2014` (line 41), which `authorities.toml` does not define. Every
-  ID is at level `build`.
-- `authorities.toml` (51 lines): 8 `[[authority]]` entries (lines 5-51):
-  Bourbaki 1968, Humphreys 1972, Massey 1969, Edwards 1974, Odlyzko 1987,
-  Strassen 1969, Bareiss 1968, von Staudt–Clausen 1840. Seven agree in
-  author, title and year with the well-known published work; the Odlyzko
-  entry could not be confirmed because his site was unreachable.
-- `ledger.toml` (22 lines): 3 untested claims (Strassen exponent, completeness
-  of the zero table up to 826.91, explicit-formula truncation error).
-- `mutants.toml` (83 lines): 10 mutants. The original text of 5 of them
-  (Weyl orbit, root closure, gate R5 list, gate R3, harness) does not occur in
-  the files they name.
-
-#### 4.4 The oracle (`montrepol/oracles/zeta-zeros-odlyzko.txt`, 520 lines)
-
-An 8-line header naming Odlyzko's `zeros1` as source (lines 4-6), then 512
-rows `index gamma`. Compared with LMFDB rounded to 10 decimals, 426 rows are
-wrong: 7 in the last digit, 22 by 1e-10 to 1e-6, 397 by 1e-6 or more. Every
-row from 130 to 507 is wrong; rows 188 to 507 (320 rows) end in one of
-`8765432109`, `2345678901`, `9876543210`, `1234567891`; rows 135 and 136 are
-both `295.8131297355`; 22 values exceed 826.91 (the maximum is
-858.1234567891 at row 507) and the sequence decreases at rows 136 and 508.
-Rows 1-38, 508-512 and 43 scattered rows agree with LMFDB. Verdict: fabricated in large part.
-
-`montrepol/oracles/zeta-zeros-odlyzko_checked.txt` (519 lines, 7-line header)
-holds the 512 values from https://www.lmfdb.org/zeros/zeta/list?N=1&limit=600,
-rounded exactly to 10 decimals with rational arithmetic. Its header states
-the source and that Odlyzko's own table could not be reached.
-
-#### 4.5 `mp-check`: the test harness (identical in both trees)
-
-`MP/Check/Random.hs` (76 lines) is SplitMix64 (Steele, Lea and Flood, 2014):
-
-- `Seed` (line 19) holds the state and an odd gamma.
-- `goldenGamma = 0x9e3779b97f4a7c15` (lines 22-23); `mkSeed` (line 25) starts
-  a stream with it.
-- `mix64` (lines 28-32) is the MurmurHash3 finaliser (shifts of 33,
-  multipliers `0xff51afd7ed558ccd`, `0xc4ceb9fe1a85ec53`), used for gammas.
-- `mix64variant13` (lines 34-38) is the output function: shifts 30, 27, 31,
-  multipliers `0xbf58476d1ce4e5b9` and `0x94d049bb133111eb`.
-- `mixGamma` (lines 42-46) forces a new gamma to be odd and, if it has fewer
-  than 24 bit transitions, flips it with `0xaaaaaaaaaaaaaaaa`, as in the paper.
-- `nextWord64` (line 48) adds gamma to the state and mixes; `splitSeed`
-  (line 51) derives two independent streams; `boundedBelow` (line 60) draws a
-  bounded integer.
-
-`MP/Check.hs` (206 lines):
-
-- Generators: `newtype Gen a = Gen (Seed -> (a, Seed))` (line 54) with
-  Functor, Applicative and Monad instances (lines 59-67); `integerIn` (69),
-  `intIn` (74), `boolG` (77), `elements` (82), `listOfLength` (91),
-  `listUpTo` (94), `rationalIn` (98).
-- Results: `newtype Result = Result [String]` (line 108), a monoid of failure
-  messages (lines 110-112); `pass` (114), `failWith` (117), `assert` (120),
-  `.&&.` (128), `===` (131), `=/=` (134), `allOf` (137).
-- Tests: `unit` (151), `unitIO` (154), `prop` (158-159, 200 cases), `propN`
-  (161) with an explicit count.
-- Running: `runSuite` (line 178) takes an optional `--seed N`, default
-  `0x5eed` (line 184), prints a pass count or `FAIL [ID]` lines, and exits
-  non-zero on failure; `checkProperty` (line 197) runs one property for a
-  given number of cases and seed.
-- There is no shrinking (comment at line 7).
-
-`test/Main.hs` (33 lines), 5 tests: CK-01 `integerIn` stays inside its
-interval (line 14); CK-02 the runner reports a property that fails on one
-value in ten (16) and accepts a true one (18); CK-03 `integerIn` reaches every
-value of a small range (20); CK-04 the first three outputs for seed 0 are
-`0xe220a8397b1dcdaf, 0x6e789e6aa1b965f4, 0x06c45d188009454f` (lines 22-25).
-An independent C SplitMix64 written for the audit prints the same three
-values, so CK-04 is a check against the reference algorithm. `mp-check` is the
-only package of the original tree that compiles.
-
-#### 4.6 `mp-linalg` in the original tree
-
-- `MP/Algebra.hs` (110 lines): classes `Semiring` (line 19), `Ring` (25),
-  `Field` (30); instances for `Integer` (46), `Rational` (55), `GF2` (75) and
-  `MinPlus` (95). `isZero x = x == zero` (lines 34-35) has only a `Semiring`
-  constraint, so it needs `Eq` it does not ask for. Line 107 declares
-  `instance Eq a => Eq (Maybe a)`, which duplicates the instance in `base` and
-  is a compile error.
-- `MP/Matrix.hs` (188 lines): `data Matrix a = Matrix Int Int (Array ...)`
-  (line 28). The comment at lines 25-27 says the dimensions are phantom
-  types; they are run-time `Int`s. `mul` (lines 58-66) is the definition.
-  `strassen` (lines 69-100) applies `.+.` and `.-.` to whole matrices
-  (lines 87-97), but those are scalar operations, and its `Semiring`
-  constraint has no subtraction. `bareiss` (lines 110-123) swaps rows
-  (line 119) without negating the result. `eliminate` divides with `recipF`
-  (line 144), which a `Ring` does not have. `rank` (lines 149-161) stops at
-  the first column with no pivot (line 156), so a matrix whose first column is
-  zero has rank 0. `inverse` (lines 164-183) builds the augmented matrix with
-  `!!` (line 169).
-- `MP/Participation.hs` (19 lines): `participation p = 1 / Σ p_i²`, 0 for an
-  empty list or a zero sum (lines 15-19), the inverse participation ratio. It
-  is identical in both trees.
-- `test/Main.hs` (103 lines): 15 tagged tests at lines 12-26. LA-03 uses only
-  cutoff 2 (`strassen 2 a b`, line 69). LA-05 passes when `inverse` returns
-  `Nothing` (line 92). LA-06 compares the rank with the nonzero rows of the
-  matrix itself (`echelon = id`, line 98). Line 26 uses `%` without importing
-  `Data.Ratio` (imports at lines 3-6), and `===` on matrices needs a `Show`
-  instance that does not exist.
-
-#### 4.7 `mp-lie` in the original tree
-
-`MP/RootSystem.hs` (79 lines): a system is its list of simple roots
-(line 22). `roots` (lines 30-37) closes the set under reflection in every
-root. `cartan` (lines 48-49) divides by `(a_i, a_i)`. The E8 "simple roots"
-(lines 69-77) are seven vectors `e_i − e_{i+1}` and `[-1,-1,0,...]`; they are
-all integral, so they lie in the D8 lattice and cannot generate the 240 E8
-roots, half of which have half-integer coordinates. `weylOrder`
-(lines 52-59) counts the distinct images of the fixed vector `[1..8]` under
-one reflection in each root, which is not a group orbit: for A2 the three
-reflections give `(2,1,3)`, `(1,3,2)` and `(3,2,1)`, so it returns 3 where the
-test (line 21) expects 6. `test/Main.hs` (49 lines): 9 tests at lines 14-22;
-LI-02's `generates` (lines 36-41) checks only that the simple roots are among
-the roots, which holds by construction.
-
-#### 4.8 `mp-seq` in the original tree
-
-`MP/Recurrence.hs` (87 lines): Berlekamp–Massey over any field (line 26),
-`generates` (line 60), `runLFSR` (line 68) and `period` (line 80). The
-algorithm is right; the corrected copy only adds `Eq` constraints that the
-corrected `isZero` requires. `test/Main.hs` (63 lines), 8 tests:
-regeneration over GF(2) and Q (lines 11-12), minimality by brute force over
-GF(2) (line 13), recovery of a length-l LFSR from 2l terms (line 14), period
-31 for x^5+x^2+1 and period 6 for x^4+x^2+1 (lines 15-21), Fibonacci's
-connection polynomial 1 − x − x² (line 22) and the zero sequence (line 24).
-
-#### 4.9 `mp-analytic` in the original tree
-
-- `MP/Bernoulli.hs` (24 lines): the recurrence sums `C(m,k)·B_k` (line 18)
-  instead of `C(m+1,k)·B_k`. For m = 2 that is `1 + 2·(−1/2) = 0`, so B2 = 0.
-  Every call recomputes all earlier numbers recursively.
-- `MP/Primes.hs` (53 lines): `vonMangoldt` returns `floor (log p)` with the
-  comment "placeholder" (line 33); `vonMangoldtExact` (lines 38-45) is used by
-  the test but missing from the export list (lines 2-7); `psi` (line 53) sums
-  the primes p rather than log p.
-- `MP/Zeta.hs` (41 lines): Euler–Maclaurin adds `half = ½N^−s` (lines 22-24)
-  where it must subtract; the Bernoulli term uses `N^(2−s−2k)` (line 30)
-  where the formula has `N^(1−s−2k)`; `theta` (line 34) stops at
-  `t/2·log(t/2π) − t/2 − π/8`; `hardyZ` (lines 38-41) ignores `t` and calls
-  `zeta 20 0.5` ("placeholder", line 40), which `zeta` rejects with `error`
-  because s ≤ 1 (line 18).
-- `MP/ExplicitFormula.hs` (16 lines): uses three hard-coded zeros
-  `[14.13, 21.02, 25.01]` ("placeholder", line 14) and only the cosine part of
-  each term (line 15).
-- `app/Main.hs` (14 lines): prints B0..B10, the primes up to 50 and
-  `zeta 40 2`.
-- `test/Main.hs` (24 lines), 6 tests at lines 13-18: AN-01 sieve on [2, 200];
-  AN-02 `vonMangoldtExact 8 == Just 2`; AN-03 B2 and B4; AN-04 ζ(2) to 1e-6;
-  AN-05 one sample, `hardyZ 14.13`. There is no AN-06 test.
-
-#### 4.10 `mp-gate` in the original tree
-
-- `MP/Gate/Toml.hs` (91 lines): a TOML subset reader; `parseTable` (47-55);
-  line 50 is a name-shadowing error under `-Werror`; it accepts a lone `[`.
-- `MP/Gate/Model.hs` (103 lines): records and parsers for the four TOML
-  files.
-- `MP/Gate/Scan.hs` (57 lines): `tagOf` (lines 18-24) sees a tag only on a
-  line that starts with `prop`, `unit` or `propN`, so it misses every test
-  written as a list element (`[ prop ...`, `, prop ...`), which is all of
-  them. Line 16 shadows `id`, line 22 uses `head` and `last`, lines 27 and 35
-  default types; all are errors under `-Werror`. `isInfixOf` is used at
-  lines 30 and 38 but only `isPrefixOf` is imported (line 11). The partial
-  names it rejects are listed at line 40.
-- `MP/Gate/Rules.hs` (104 lines): `r1`..`r6` at lines 65, 71, 80, 88, 91, 97.
-  `r1` never reads `CONFORMANCE.md`; `r5` requires `-Werror` in every `.cabal`
-  file (line 94), but the flag is set in `cabal.project`.
-- `MP/Gate/Render.hs` (43 lines): renders the model as Markdown.
-- `app/Main.hs` (97 lines): commands `check` (default), `write`, `mutants`;
-  `main` (20), `write` (33), `check` (42), `loadRepo` (53). Identical in both
-  trees.
-- `app/Mutants.hs` (66 lines): uses `docArrays` (line 25), `lookupStrings`
-  (35) and `lookupString` (36), none of which is defined.
-- `test/Main.hs` (57 lines): GT-00..GT-07; line 50 writes
-  `SourceFile "x.hs" "x = 1 -- " <> "TODO" True`, which parses as applying the
-  string `"TODO"` to `True`.
-
-`cabal build all --keep-going` on the original tree fails in `mp-linalg`,
-`mp-lie`, `mp-analytic` and `mp-gate`. Running the corrected gate's rules over
-the original tree reports 17 violations: R2 for `steele-2014`, R3 for the
-untested `AN-06`, and 15 R5 uses of partial functions (listed in
-`README-audit.md`, section 3).
-
-### 5. The corrected Haskell tree (`montrepol_checked/`)
-
-Same layout and package names. Unchanged copies: `.gitignore`,
-`cabal.project`, the `.cabal` files of every package except `mp-lie`, the
-whole of `mp-check`, `Participation.hs` and the gate's `app/Main.hs`.
-`mp-seq` differs only by `Eq` constraints. Everything else was rewritten or
-edited. Build and test with
-
-    cd montrepol_checked
-    cabal update && cabal build all && cabal test all
-    cabal run mp-gate && cabal run mp-gate -- mutants
-
-Result locally and in CI: no warnings; 80 tests pass (mp-check 5, mp-linalg
-19, mp-lie 13, mp-seq 8, mp-analytic 12, mp-gate 23); "mp-gate: R1-R6 hold
-over 6 packages"; "10 of 10 mutants caught".
-
-#### 5.1 `mp-linalg`
-
-- `MP/Algebra.hs` (124 lines): `Semiring` (line 18), fixities `infixl 6 .+.`,
-  `infixl 7 .*.`, `infixl 6 .-.` (lines 24-26), `Ring` (28), `Field` (33),
-  and a new class `ExactDivision` (39) for the exact division Bareiss needs:
-  `quot` for `Integer` (66-67), `/` for `Rational` (81-82), and the identity
-  for `GF2` (106-107), where the only nonzero divisor is 1. Division by zero
-  returns zero, so every operation is total. `isZero` now requires `Eq`
-  (line 43). The duplicate `Eq (Maybe a)` instance is gone.
-- `MP/Matrix.hs` (201 lines): dimensions are run-time values, and a matrix is
-  zero outside its shape (comment at lines 8-11). `Eq` and `Show` instances
-  (lines 35, 38); `entry` (46); `generate` (52); `fromLists` pads short rows
-  (59-64); `toLists` (66); `identity` (71); `addM` (74); `subM` (77); `mul`
-  (81); `strassen` over `Ring` (88-91), which falls back to `mul` when any
-  dimension is below the cutoff or the cutoff is below 2, and otherwise splits
-  into zero-padded quadrants (`strassen'`, from line 94; products m1..m7 at
-  lines 101-107); `det` by Bareiss with a sign flip per row swap and division
-  by the previous pivot (124, comment at 121-123); `findPivot` (141);
-  `swapRows` (147); `eliminate` (154); `echelon` (163), which skips columns
-  without a pivot; `rank` as the nonzero rows of the echelon form (177);
-  Gauss–Jordan `inverse` (182).
-- `test/Main.hs` (161 lines), 19 tests at lines 13-32: semiring axioms for
-  four types (13-16); associativity, distributivity over same-shape pairs and
-  the identity (17-19); Strassen against `mul` for cutoffs 2-5 over Integer,
-  Rational and GF2 (20-22); Bareiss against the Leibniz expansion over Integer
-  and GF2 for n up to 6, and the pivot-swap matrix with determinant −1
-  (23-25); inverse round trip and a singular matrix (26-27); rank against the
-  order of the largest nonzero minor, and a matrix with a zero first column
-  whose rank is 2 (28-30); participation bounds and the uniform vector
-  (31-32).
-
-#### 5.2 `mp-lie`
-
-`mp-lie.cabal` adds `mp-linalg` to the library's `build-depends`.
-`MP/RootSystem.hs` (119 lines; method in the comment at lines 1-10):
-`reflect` (40) returns its argument unchanged for a zero root; `roots` (51)
-closes the simple roots under the simple reflections; `cartan` (63-64) and
-`cartanEntry` (66-67) give entry (i, j) = 2(a_i, a_j)/(a_j, a_j), Humphreys'
-convention (comment at 61-62); `weylOrder` (70) uses orbit–stabilizer,
-|W| = |W·w_i| × |W(S \ {i})|, enumerating the orbit of a fundamental weight by
-its Dynkin labels (83-85); `system` (100) gives A2, B2, G2 and E8, with E8 in
-doubled coordinates so the half-integer roots stay integral (107-108).
-
-`test/Main.hs` (68 lines), 13 tests: root axioms for A2, B2, G2 and E8
-(12-15); E8 has 240 roots (16); the simple roots generate A2 and E8 (17-18);
-the Cartan matrices of A2, `[[2,-1],[-1,2]]`, and G2, `[[2,-1],[-3,2]]`
-(19-22); Weyl orders 6, 8, 12 and 696,729,600 for A2, B2, G2 and E8 (23-26).
-
-#### 5.3 `mp-seq`
-
-`MP/Recurrence.hs` (87 lines): `berlekampMassey` (26), `generates` (60),
-`runLFSR` (68), `period` (80), with `Eq` constraints added. The test file
-(63 lines) adds `Eq a` to `regenerates` (line 33). Same 8 tests as the
-original.
-
-#### 5.4 `mp-analytic`
-
-- `MP/Bernoulli.hs` (35 lines): a memoised list `bernoullis` (line 14) built
-  with `C(m+1,k)` (line 20); `bernoulli` (25) indexes it; `choose` (32).
-- `MP/Primes.hs` (52 lines): `primesUpTo` (17) sieves with `accumArray`
-  (line 21); `vonMangoldt :: Int -> Maybe Int` (33) returns the prime p when
-  n = p^k, so Λ(n) = log p is represented exactly; `psiExp` (48) is
-  exp(ψ(x)) as an exact integer; `psi` (51) is its logarithm.
-- `MP/Zeta.hs` (89 lines): `zeta` (21) for real s > 1, NaN otherwise
-  (comment 19-20); `zetaC` (27) for complex s with N = 20 + ⌈t/π⌉ (line 30);
-  `eulerMaclaurin` (35) with the formula in the comment at lines 33-34 and
-  `correctionTerms` (44); `theta` (59) by its asymptotic expansion, stated
-  accurate to about 1e-12 for t ≥ 10 (57-58); `rotated` (66) is
-  e^{iθ(t)}ζ(½+it); `hardyZ` (70) its real part; `zerosUpTo` (75) scans for
-  sign changes with step h and bisects each to width eps.
-- `MP/ExplicitFormula.hs` (16 lines): `explicitPsi x gammas` (12) takes the
-  zero ordinates as an argument and computes
-  `x − Σ 2√x(½cos(γ log x) + γ sin(γ log x))/(¼ + γ²) − log 2π − ½log(1 − x⁻²)`
-  (lines 9 and 15-16); the summand is 2 Re(x^ρ/ρ) for ρ = ½ + iγ.
-- `test/Main.hs` (78 lines), 12 tests: AN-01 sieve against trial division on
-  [2, 2000] (17); AN-02 support of Λ on n ≤ 1000, Λ(8) = log 2, and
-  exp(ψ(x)) = lcm(1..x) for x ≤ 300 (18-22); AN-03 B2, B4, odd numbers vanish
-  up to B61, von Staudt–Clausen denominators for B2..B60 (23-28); AN-04
-  ζ(2k) against the closed form for k = 1..4 to 1e-12 (29-30); AN-05 the
-  imaginary part of `rotated t` below 1e-9 for t in [10, 800] (31); AN-06 the
-  table has 512 rows, and `zerosUpTo 10 827 0.05 1e-11` matches it to 1e-8
-  (32-34). The table is read at line 14 from
-  `../../../montrepol/oracles/zeta-zeros-odlyzko_checked.txt`.
-
-Measured: the zero finder returns 512 zeros on (10, 827]; the largest
-difference from the checked table is 5.3e-11; 408 of them differ from the
-original table by 1e-8 or more, the largest by 37.78.
-
-#### 5.5 `mp-gate`
-
-- `MP/Gate/Toml.hs` (130 lines): the subset is described at lines 1-4;
-  anything else is a parse error. `parseToml` (25) merges repeated
-  `[[name]]` sections in order (45); `tablesNamed` (54), `lookupString` (58),
-  `lookupStrings` (63); string escapes in `parseString` (92); comments outside
-  strings removed by `stripComment` (118).
-- `MP/Gate/Model.hs` (109 lines): `IdRow` (15), `Authority` (25), `Mutant`
-  (31), `LedgerEntry` (41), `Model` (50); `loadModel` (63); one parser per
-  file (71, 81, 88, 98).
-- `MP/Gate/Scan.hs` (122 lines): `tagsIn` (20) takes the first string literal
-  after `unit`, `unitIO`, `prop` or `propN` used as a function, wherever it is
-  on the line; `deferrals` (39) and `partials` (46) match whole words on code
-  with comments and string literals blanked (`blankComments` 78, `codeOnly`
-  102), so primed names do not match. The marker and partial-name lists
-  (lines 42 and 49) are assembled from halves so the scanner does not flag
-  its own file (comment at 4-5).
-- `MP/Gate/Rules.hs` (155 lines): `checkRepo` (47); R1 (61): unique,
-  well-formed IDs naming real packages, and the committed `CONFORMANCE.md`
-  equal to the rendering; R2 (75): levels are load-bearing; R3 (90): every ID
-  tagged in its own package, every tag registered; R4 (98): no deferral
-  markers; R5 (102): no partial functions, and `-Werror` in `cabal.project`
-  or every `.cabal` file; R6 (110): only boot packages (`bootPackages`, 134)
-  with both bounds, every package listed, no package repository.
-- `MP/Gate/Render.hs` (46 lines): `renderConformance` (11).
-- `app/Mutants.hs` (55 lines): `runMutants` (13) prints "N of M mutants
-  caught" (21); `runOne` (24) reports `STALE` unless the planted text occurs
-  exactly once (30), applies it with `replaceOnce` (43), runs the named test
-  suite, and counts the mutant as caught only if the suite exits non-zero and
-  prints `FAIL [ID]` for every expected ID (38-39); the file is restored
-  afterwards.
-- `test/Main.hs` (91 lines), 23 tests GT-00..GT-07 at lines 20-47, including
-  near-misses: markers inside strings and comments, primed names. Test
-  fixtures contain the strings `"CK-01"` and `"CK-02"`, which are data, not
-  tags.
-
-#### 5.6 Model and conformance
-
-- `model/ids.toml` (263 lines): the same 34 IDs, claims narrowed to what the
-  tests check (section 5.7).
-- `model/authorities.toml` (63 lines): adds `steele-2014` (line 36) and
-  `lmfdb-zeros` (42) to the original eight.
-- `model/ledger.toml` (22 lines): the zero-table entry's evidence (line 15)
-  names the `_checked` file and says the original does not match published
-  values.
-- `model/mutants.toml` (84 lines): 10 mutants (section 5.8).
-- `CONFORMANCE.md` (77 lines): regenerated by `cabal run mp-gate -- write`;
-  R1 fails if it differs from the model.
-
-#### 5.7 The conformance register, ID by ID
-
-Claims from `montrepol_checked/model/ids.toml`, shortened; test lines are in
-`montrepol_checked/packages/<package>/test/Main.hs`. All IDs are at level
-`build`.
-
-| ID | Claim | Test lines |
+| ID | Claim (from `model/ids.toml`) | Test lines |
 |---|---|---|
-| CK-01 | `integerIn lo hi` stays in [lo, hi] | 14 |
-| CK-02 | the runner reports a property false on one value in ten, accepts a true one | 16, 18 |
-| CK-03 | `integerIn` reaches every value of a small range | 20 |
-| CK-04 | the stream matches published SplitMix64 | 22 |
-| LA-01 | Integer, Rational, GF2, MinPlus are semirings | 13-16 |
-| LA-02 | product associative, distributive, identity is a unit | 17-19 |
-| LA-03 | Strassen equals the definition, cutoffs 2-5, three rings | 20-22 |
-| LA-04 | Bareiss equals Leibniz over Integer and GF2 | 23-25 |
-| LA-05 | inverse multiplies back; singular has none | 26-27 |
-| LA-06 | rank equals nonzero rows of the echelon form | 28-29 |
-| LA-07 | participation ratio in [1, n]; uniform gives n | 31-32 |
-| LI-01 | A2, B2, G2, E8 satisfy the root axioms | 12-16 |
-| LI-02 | simple roots generate the system | 17-18 |
-| LI-03 | Cartan matrices have the published entries | 19, 21 |
-| LI-04 | Weyl orders equal the published orders | 23-26 |
-| SQ-01 | Berlekamp–Massey's polynomial regenerates the sequence | 11-12 |
-| SQ-02 | its length is minimal | 13 |
-| SQ-03 | a length-l LFSR is recovered from 2l terms | 14 |
-| SQ-04 | primitive polynomials have maximal period, others not | 15, 19 |
-| SQ-05 | Fibonacci's connection polynomial; zero sequence has complexity 0 | 22, 24 |
-| AN-01 | the sieve gives the primes | 17 |
-| AN-02 | von Mangoldt and ψ match their definitions | 18, 20, 21 |
-| AN-03 | Bernoulli numbers: closed forms, von Staudt–Clausen | 23-27 |
-| AN-04 | ζ by Euler–Maclaurin matches the closed forms | 29 |
-| AN-05 | e^{iθ(t)}ζ(½+it) is real to 1e-9 on [10, 800] | 31 |
-| AN-06 | the zeros on (10, 827] are the 512 tabulated, to 1e-8 | 32-33 |
-| GT-00 | a clean repository has no violations | 20 |
-| GT-01 | R1 fires on an edited register, duplicate ID, bad model | 21-23 |
-| GT-02 | R2 fires on open IDs, asserting words, missing or unknown authorities | 24-27 |
-| GT-03 | R3 fires on untested IDs and unregistered tags | 28-29 |
-| GT-04 | R4 fires on markers, not in comments or strings | 30-32 |
-| GT-05 | R5 fires on partial functions and operators and missing `-Werror` | 34-37 |
-| GT-06 | R6 fires on outside dependencies, missing bounds, unlisted packages, repositories | 39-42 |
-| GT-07 | the TOML reader parses the subset and rejects the rest | 44, 47 |
+| CK-01 | integerIn lo hi yields values in the closed interval [lo, hi]. | 14 |
+| CK-02 | The property runner reports a property that fails on one value in ten, and accepts a true one. | 16-18 |
+| CK-03 | integerIn reaches every value of a small range. | 20 |
+| CK-04 | The SplitMix64 stream matches the published algorithm. | 22 |
+| LA-01 | Integer, Rational, GF2 and MinPlus satisfy the semiring axioms. | 18-21 |
+| LA-02 | Matrix multiplication is associative, distributes over addition and has the identity as unit. | 22 |
+| LA-03 | Strassen multiplication equals the definition of the product, for every cutoff, over Integer, Rational and GF2. | 23-25 |
+| LA-04 | The Bareiss determinant equals the Leibniz expansion over Integer and GF2. | 26-28 |
+| LA-05 | det(AB) = det(A) det(B) and det(A^T) = det(A). | 30 |
+| LA-06 | Over Q the inverse exists exactly when det is non-zero and is a two-sided inverse; rank A = rank A^T, and rank is full exactly when det is non-zero. | 31-32 |
+| LA-07 | Powers of a min-plus adjacency matrix give all-pairs shortest path lengths. | 33 |
+| LA-08 | Kish's effective sample size is the participation ratio of diag(w), lies in [1, number of non-zero weights], and is exact: [2^32, 2^32] has k_eff = 2 and is rejected against 3. | 34-35 |
+| LA-09 | For non-zero A, 1 <= PR(A^T A) <= rank(A^T A), and tr(G^2) is the squared Frobenius norm of symmetric G. | 40 |
+| LA-10 | For 2x2 symmetric G, tr(G^2) = tr(G)^2 - 2 det G; for PSD G, PR(G) lies in [1, 2] and equals 2 exactly when G is a multiple of the identity. | 41 |
+| LI-01 | The constructed A1-A6, B2-B6, D4-D7, G2, F4, E6, E7 and E8 satisfy the axioms of a reduced crystallographic root system. | 39-46 |
+| LI-02 | Each system has the tabulated number of roots, and the extracted simple roots number the rank. | 49 |
+| LI-03 | Every positive root is a non-negative integral combination of the extracted simple roots. | 53 |
+| LI-04 | The Weyl group order computed by orbit-stabilizer from the Cartan matrix matches the table, from A1 to E8 = 696729600. | 57 |
+| LI-05 | The determinant of each computed Cartan matrix matches the table. | 61 |
+| LI-06 | For E8: \|W\| is the product of the degrees, the positive roots number the sum of (d_i - 1), \|Phi\| = rank times the Coxeter number 30, the root lattice is even and unimodular, and \|W\| does not depend on how the nodes are labelled. | 65-75 |
+| SQ-01 | The Berlekamp-Massey connection polynomial generates the input sequence, over GF(2) and over Q. | 11-12 |
+| SQ-02 | Berlekamp-Massey returns the least length: no shorter LFSR generates the sequence. | 13 |
+| SQ-03 | From 2l terms of a length-l LFSR sequence, Berlekamp-Massey recovers a recurrence that predicts the rest. | 14 |
+| SQ-04 | x^5 + x^2 + 1 gives period 31 and linear complexity 5; x^4 + x^2 + 1 = (x^2 + x + 1)^2 gives period 6, not 15. | 15-19 |
+| SQ-05 | The Fibonacci numbers have connection polynomial 1 - x - x^2, and the zero sequence has linear complexity 0. | 22-24 |
+| AN-01 | The sieve agrees with trial division, and pi(10^k) for k = 1..6 matches the published counts. | 15-17 |
+| AN-02 | The product of p over prime powers p^k <= x equals lcm(1..x), so exp psi(x) = lcm(1..x); psi(x) matches log lcm(1..x) to 1e-12. | 19-21 |
+| AN-03 | The exact Bernoulli numbers match the classical values and satisfy von Staudt-Clausen up to B_80. | 27-30 |
+| AN-04 | Euler-Maclaurin zeta matches zeta(2), zeta(4), zeta(0), zeta(-1), zeta(1/2) and Euler's formula for zeta(2k), k <= 10, to 1e-12. | 35-43 |
+| AN-05 | exp(i theta(t)) zeta(1/2 + it) is real to 1e-9 for t in [10, 800]. | 48 |
+| AN-06 | The zeros of Z(t) located on (10, 827] are exactly the 512 tabulated zeros, each to 1e-8. | 52 |
+| GT-00 | A repository that keeps the rules produces no violations. | 20 |
+| GT-01 | R1 fires on a hand-edited CONFORMANCE.md, a duplicated ID and an unparsable model, and on nothing else. | 21-25 |
+| GT-02 | R2 fires on an open ID, an asserting word in an open claim, some-true with no authority and a citation of an unknown authority. | 27-33 |
+| GT-03 | R3 fires on an ID with no test and on a test tagged with an unregistered ID. | 35-37 |
+| GT-04 | R4 fires on a deferral marker and on a stub, and not on the same word in a comment or a string. | 39-43 |
+| GT-05 | R5 fires on a partial function, a partial operator and a missing -Werror, and not on primed names, strings or comments. | 45-51 |
+| GT-06 | R6 fires on an outside dependency, an unbounded boot dependency, an unlisted package and a re-enabled package repository. | 53-59 |
+| GT-07 | The TOML reader parses the subset the model uses and rejects what it cannot read. | 61-68 |
 
-#### 5.8 The mutants
+### 4.4 `mp-check`: the harness
 
-From `montrepol_checked/model/mutants.toml`; each must make the named test
-fail. CI honesty run 32 printed `CAUGHT` for all ten.
+`MP/Check/Random.hs` (76 lines) is SplitMix64: `Seed` (line 19), the golden
+gamma `0x9e3779b97f4a7c15` (22-23), `mix64` (28), the output mix
+`mix64variant13` with multipliers `0xbf58476d1ce4e5b9` and
+`0x94d049bb133111eb` (34-38), `mixGamma` (42), `nextWord64` (48),
+`splitSeed` (51), `boundedBelow` (60).
 
-| Line | Mutant | File | Expected failure |
+`MP/Check.hs` (212 lines): generators (`newtype Gen`, line 54; `integerIn`
+69, `intIn` 74, `boolG` 77, `elements` 82, `listOfLength` 91, `listUpTo` 94,
+`rationalIn` 98), results (`newtype Result`, 108; `pass`, `failWith`,
+`assert`, `allOf`, 114-137), tests (`data Test`, 148; `unit` 151, `unitIO`
+154, `prop` 158 with 200 cases, `propN` 161), the pure property runner
+`checkProperty` (178), and `runSuite` (196), which prints `ok [ID] name` or
+`FAIL [ID] ...`, takes `--seed N` and defaults to `0x5eed`. There is no
+shrinking; a failure prints the seed and case number (comment at lines 7-9).
+
+`test/Main.hs` (33 lines), 5 tests: CK-01 bounds (14), CK-02 the runner
+rejects a property false on one value in ten and accepts a true one (16-18),
+CK-03 coverage of a small range (20), CK-04 the first outputs for seed 0
+equal the reference stream (22).
+
+### 4.5 `mp-linalg`
+
+- `MP/Algebra.hs` (137 lines): classes `Semiring` (27), `Ring` (35),
+  `Domain` (48, with `exactQuot`, documented at 41-47) and `Field` (51,
+  `recipF` returning `Nothing` exactly for zero). `Num` is deliberately not
+  used (3-5). Instances for `Integer` (64-75), `Rational` (77-93), `GF2`
+  (97-119) and the tropical `MinPlus` (126-137), where `Nothing` is +infinity.
+- `MP/Matrix.hs` (304 lines): `newtype Matrix (m :: Nat) (n :: Nat) a`
+  (52), so a product of the wrong shapes is a type error (comment 3-9).
+  `fromLists` returns `Nothing` unless the shape is exact (76-77); `withSize`
+  brings a runtime size into the type (113). `mul` is the definition (141);
+  `mulStrassen` (153) pads to the next power of two and recurses with the
+  seven products (166-193), using `mul` below the cutoff; `power` by
+  squaring (195); `trace` (201). `det` (210) is Bareiss: `bareiss` (213-228)
+  flips the sign on a row swap and divides by the previous pivot with
+  `exactQuot`. `detLeibniz` (242) is the exponential oracle. `rank` (263)
+  row-reduces over a field and skips zero columns; `inverse` (281) is
+  Gauss-Jordan and returns `Nothing` exactly for singular input.
+- `MP/Participation.hs` (49 lines): `kishEffective` (23), `(Σw)²/Σw²` as an
+  exact `Rational` over `Natural` weights; `kishAtLeast` (34) decides
+  `k_eff >= k` by cross-multiplication, so `[2^32, 2^32]` against 3 is
+  `False`; `participationRatio` (39), `tr(G)²/tr(G²)`; `frobeniusSq` (48).
+- `test/Main.hs` (250 lines), 19 tests, tags at lines 18-41: semiring axioms
+  for four types (LA-01); associativity, distributivity, unit (LA-02);
+  Strassen against the definition over Integer, Rational and GF2 for several
+  cutoffs (LA-03); Bareiss against Leibniz over Integer and GF2 and a matrix
+  needing a row swap (LA-04); det multiplicative and transpose-invariant
+  (LA-05); inverse exists exactly when det ≠ 0, and rank A = rank Aᵀ (LA-06);
+  min-plus powers against a Floyd-Warshall written in the test (LA-07,
+  `floydWarshall` at 188); Kish as the participation ratio of diag(w), and
+  exactly 2 for `[2^32, 2^32]` (LA-08); 1 ≤ PR(AᵀA) ≤ rank(AᵀA) (LA-09); for
+  2x2 symmetric G, tr(G²) = tr² − 2 det, and PR = 2 iff G = cI (LA-10).
+
+### 4.6 `mp-lie`
+
+`MP/RootSystem.hs` (196 lines). Systems are given only by their vectors
+(comment 3-11); E8 and F4 are scaled by 2 to stay integral.
+`axiomViolations` (55-75) lists every way a set fails to be a reduced
+crystallographic root system: empty, zero vector, repeats, non-integral
+`2(b,a)/(a,a)`, not closed under reflection, or non-reduced. Constructions:
+`typeA` (85), `typeB` (89), `typeD` (93), `typeG2` (101), `typeF4` (109),
+`typeE8` (114: 112 roots ±2eᵢ±2eⱼ and 128 sign vectors), and
+`orthogonalSubsystem` (122), from which E7 and E6 are cut out of E8.
+`genericFunctional` (131) picks positive roots; `simpleRoots` (144) are the
+positive roots that are not sums of two others; `cartanMatrix` (154);
+`weightOrbit` (163) enumerates a fundamental weight's orbit in Dynkin
+labels; `weylOrder` (178-189) multiplies the smallest leaf orbit by the
+order of the Cartan matrix with that node deleted, recursively.
+
+`test/Main.hs` (127 lines): 20 cases (lines 21-33): A1-A6, B2-B6, D4-D7, G2,
+F4, E6, E7, E8, each with rank, root count, Weyl order and Cartan
+determinant from the tables. 106 tests: LI-01 axioms for all 20 plus three
+rejections (E8 minus one root, a set with a and 2a, and (3,0) with (1,1))
+(39-46); LI-02 root and simple-root counts (49); LI-03 positive roots are
+non-negative integral sums of simple roots (53); LI-04 Weyl orders (57);
+LI-05 Cartan determinants (61); LI-06 for E8, |W| as the product of the
+degrees, |Φ⁺| = Σ(dᵢ − 1), |Φ| = rank × h, the root lattice even and
+unimodular, and the order unchanged by relabelling nodes (65-75). The E8
+Weyl order is 696,729,600 (case at line 30).
+
+### 4.7 `mp-seq`
+
+`MP/Recurrence.hs` (87 lines): `berlekampMassey` over any field (26),
+returning the linear complexity and a minimal connection polynomial;
+`generates` (60), `runLFSR` (68), `period` (80). `test/Main.hs` (63 lines),
+8 tests: regeneration over GF(2) and Q (11-12), minimality by brute force
+over GF(2) (13), recovery from 2l terms (14), period 31 for x⁵+x²+1 and 6 for
+x⁴+x²+1 (15-19), Fibonacci's 1 − x − x² and the zero sequence (22-24).
+
+### 4.8 `mp-analytic` and the zeta table
+
+- `MP/Bernoulli.hs` (36 lines): `bernoullis` (13), memoised from
+  `Σ C(m+1,k) B_k = 0` (comment 3-5); `bernoulli` (26); `binomial` (33).
+- `MP/Primes.hs` (64 lines): an ST-array sieve (22-33); `isPrimeTrial` (36)
+  as its oracle; `primePowerBase` (40); `vonMangoldt` (52); `chebyshevPsi`
+  (56); `primePowerProduct` (60), exactly lcm(1..x); `primeCount` (63).
+- `MP/Zeta.hs` (93 lines): `zeta` (21) calls `zetaWith (20 + ⌈|s|⌉) 24`;
+  `zetaWith` (30-44) is complex Euler-Maclaurin, Σ_{k<N} k^−s + N^{1−s}/(s−1)
+  + N^−s/2 + Bernoulli corrections; `theta` (49-56) with four correction
+  terms after −π/8; `hardyZ` (61) returns Z(t) and the imaginary residue;
+  `zerosBetween` (72-93) finds sign changes on a grid and bisects 60 times.
+  The comment at 69-71 states that close pairs or even-order zeros would be
+  missed.
+- `MP/ExplicitFormula.hs` (28 lines): `zeroContribution` (20), 2 Re(x^ρ/ρ)
+  for ρ = ½ + iγ; `psiExplicit` (26).
+- `app/Main.hs` (28 lines): `mp-analytic-report`. Finds the zeros on
+  (10, 827] (line 14), evaluates ψ(x) at x = 20.5, 40.5, ..., 1000.5, the 50
+  points x + 0.5 for x = 20, 40, ..., 1000 whose integer part is not a prime
+  power, which is all of them (16), and prints the error of the
+  explicit formula with M = 0, 1, 10, 50, 100, 250, 512 zeros (17-28). The label "20.5..980.5" is hard-coded at line 26 and
+  repeated in `model/ledger.toml:28`; the points actually run to 1000.5. Measured output:
+
+| M | mean abs err | max abs err | max err/√x |
 |---|---|---|---|
-| 7 | Weyl order: orbit sizes added instead of multiplied | `mp-lie/src/MP/RootSystem.hs` | LI-04 |
-| 15 | Root closure stops after the simple roots | `mp-lie/src/MP/RootSystem.hs` | LI-01 |
-| 23 | Berlekamp–Massey length update off by one | `mp-seq/src/MP/Recurrence.hs` | SQ-01, SQ-02 |
-| 31 | Sieve crosses off with stride 2i | `mp-analytic/src/MP/Primes.hs` | AN-01 |
-| 39 | Euler–Maclaurin: sign of the N^−s/2 term flipped | `mp-analytic/src/MP/Zeta.hs` | AN-04 |
-| 47 | theta: −π/8 dropped | `mp-analytic/src/MP/Zeta.hs` | AN-05 |
-| 55 | Bernoulli: C(m, k) instead of C(m+1, k) | `mp-analytic/src/MP/Bernoulli.hs` | AN-03 |
-| 63 | Gate: R5 partial-function list emptied | `mp-gate/src/MP/Gate/Scan.hs` | GT-05 |
-| 71 | Gate: R3 untested-ID check disabled | `mp-gate/src/MP/Gate/Rules.hs` | GT-03 |
-| 79 | Harness: property runner stops after case 0 | `mp-check/src/MP/Check.hs` | CK-02 |
+| 0 | 3.289051 | 12.539032 | 0.528519 |
+| 1 | 3.251969 | 10.151486 | 0.468632 |
+| 10 | 2.064361 | 8.009703 | 0.316488 |
+| 50 | 1.779325 | 7.440339 | 0.259749 |
+| 100 | 1.309902 | 5.711652 | 0.199399 |
+| 250 | 1.053419 | 3.440788 | 0.125484 |
+| 512 | 0.736835 | 3.425835 | 0.111709 |
 
-Two of these, the Euler–Maclaurin sign and the Bernoulli binomial, plant
-back defects that the original code actually had (section 4.9). A transposed-Cartan mutant was tried and dropped
-because it is equivalent: transposing the Cartan matrix does not change the
-Weyl order.
+- `test/Main.hs` (77 lines), 10 tests: AN-01 sieve against trial division up
+  to 5000 and π(10^k) for k = 1..6 against OEIS A006880 (15-17); AN-02
+  ∏p over prime powers = lcm(1..x) for x ≤ 300 and ψ(x) = log lcm(1..x) to
+  1e-12 for x ≤ 600 (19-21); AN-03 B₀..B₁₂ and von Staudt-Clausen up to B₈₀
+  (27-30); AN-04 ζ(2), ζ(4), ζ(0), ζ(−1) and ζ(½) = −1.4603545088095868 to
+  1e-12, and Euler's formula for k = 1..10 (35-47); AN-05 |Im e^{iθ}ζ(½+it)| < 1e-9 on [10, 800] (48); AN-06 all 512
+  tabulated zeros are found to 1e-8 and no others (52-55). The table is read
+  from `../../oracles/zeta-zeros-odlyzko.txt` (line 76).
 
-### 6. The Dex dual oracle (`dex/`)
+**The zeta table.** `oracles/zeta-zeros-odlyzko.txt` (520 lines) has an
+8-line header citing Odlyzko's `zeros1` and saying the rows came from the
+`prime-router` repository (lines 1-8), then 512 rows `index gamma`. Re-checked
+at `ee9176b`: indices run 1 to 512, the values strictly increase from
+14.1347251417 to 826.9058109541, and all 512 data rows are byte-identical to
+`oracles/zeta-zeros-odlyzko_checked.txt`, which holds the LMFDB values rounded
+to 10 decimals. AN-06 passes against it. The earlier finding that this table
+was "fabricated in large part" (426 wrong rows) was about the fabricated
+version and does not apply to this file. Odlyzko's site itself could not be
+reached from the build machine, so the comparison is with LMFDB.
+
+### 4.9 `mp-gate`: the rules
+
+- `MP/Gate/Toml.hs` (130 lines): the TOML subset the model uses (comment
+  1-7): comments, `key = value`, `[[name]]` arrays of tables, strings with
+  escapes, integers, booleans, single-line string arrays; anything else is a
+  parse error with its line number. `parseToml` (41).
+- `MP/Gate/Model.hs` (88 lines): `Level` (20: `SomeTrue`, `Build`, `Open`),
+  `Row` (37), `Claim` (48), `Authority` (57), `Model` (60), `readModel` (68).
+- `MP/Gate/Render.hs` (56 lines): `renderConformance` (7).
+- `MP/Gate/Scan.hs` (129 lines): `codeOnly` (62) blanks comments, strings and
+  character literals; `identifiers` (97) and `operators` (105) tokenise;
+  `testTags` (117) finds IDs in `unit`/`unitIO`/`prop`/`propN` calls. The
+  marker, stub and partial-name lists (24-51) are spelled in halves so the
+  scanner can read itself (5-7).
+- `MP/Gate/Rules.hs` (215 lines): `checkRepo` (55) as a pure function;
+  `modelRules` (62, R1 and R2, with `assertingWords` at 112), `testRules`
+  (115, R3), `sourceRules` (141, R4-R6), `dependencies` (193) for
+  `build-depends`, `bootPackages` (52).
+- `app/Main.hs` (97 lines): `check` (42, default), `write` (33), `mutants`;
+  `loadRepo` (53) reads the model, `CONFORMANCE.md`, `cabal.project`, the
+  `.cabal` files and every `.hs` file.
+- `app/Mutants.hs` (73 lines): `runMutants` (22); `runOne` (38-58) reports
+  `STALE` unless the planted text occurs exactly once, writes the mutant,
+  runs `cabal test` on the package, restores the file in a `finally`, and
+  counts the mutant as caught only if the run fails and every expected ID
+  printed `FAIL [ID]`.
+- `test/Main.hs` (133 lines), 23 tests (GT-00..GT-07, lines 20-68): a clean
+  synthetic repository has no violations; each rule fires on its planted
+  defects and not on the near-misses in `VERIFICATION.md:19-26`.
+
+### 4.10 The mutants
+
+From `model/mutants.toml` and the measured replay:
+
+| Line | Mutant | File | Expects | Failed in the replay |
+|---|---|---|---|---|
+| 11 | Strassen: wrong product in C22 | `mp-linalg/src/MP/Matrix.hs` | LA-03 | LA-03 |
+| 19 | Bareiss: row swap without sign flip | `MP/Matrix.hs` | LA-04 | LA-04, LA-05 |
+| 27 | Kish: 64-bit saturation reintroduced | `MP/Participation.hs` | LA-08 | LA-08 |
+| 35 | Weyl orbit: only reflect on positive coordinates | `mp-lie/src/MP/RootSystem.hs` | LI-04 | LI-04, LI-06 |
+| 43 | Root axioms: closure check disabled | `MP/RootSystem.hs` | LI-01 | LI-01 |
+| 51 | Berlekamp-Massey: length update off by one | `mp-seq/src/MP/Recurrence.hs` | SQ-01, SQ-02 | SQ-01..SQ-04 |
+| 59 | Sieve: crosses off with stride 2i | `mp-analytic/src/MP/Primes.hs` | AN-01 | AN-01, AN-03 |
+| 67 | Euler-Maclaurin: N^−s/2 term dropped | `MP/Zeta.hs` | AN-04 | AN-04, AN-05, AN-06 |
+| 75 | theta: −π/8 dropped | `MP/Zeta.hs` | AN-05 | AN-05 |
+| 83 | Bernoulli: recurrence index shifted | `MP/Bernoulli.hs` | AN-03 | AN-03..AN-06 |
+| 91 | Gate: R5 partial-function list emptied | `mp-gate/src/MP/Gate/Scan.hs` | GT-05 | GT-05 |
+| 99 | Gate: R3 untested-ID check disabled | `MP/Gate/Rules.hs` | GT-03 | GT-03 |
+| 107 | Harness: property runner stops after case 0 | `mp-check/src/MP/Check.hs` | CK-02 | CK-02 |
+
+All 13 printed `CAUGHT`, and the working tree was clean afterwards.
+
+## 5. The corrected copy (`montrepol_checked/`)
+
+`montrepol_checked/` was made on 2026-11-15, before the restore, as a
+corrected copy of what `montrepol/` then contained. That version did not
+compile, and its copy was rewritten until it built. Since the version it
+corrected was not the author's code, this directory is stale as a whole
+(section 2). It is described here because it is still in the repository,
+still built by CI, and still used by the Dex determinant check.
+
+What it contains, measured when it was made and still true of the files:
+
+- The same six package names and the same `cabal.project`. Ten files are
+  byte-identical to the restored `montrepol/`: `.gitignore`,
+  `cabal.project`, the `.cabal` files of `mp-analytic`, `mp-check`,
+  `mp-gate`, `mp-linalg` and `mp-seq`, `MP/Check/Random.hs`, the mp-check
+  tests, and the gate's `app/Main.hs`. Everything else differs.
+- An untyped `MP.Matrix` (`data Matrix a = Matrix Int Int ...`,
+  `montrepol_checked/packages/mp-linalg/src/MP/Matrix.hs:33`) with an
+  `ExactDivision` class in `MP/Algebra.hs:39`, where the author's code has
+  dimensions in the type and a `Domain` class.
+- `mp-lie` with A2, B2, G2 and E8 only (`MP/RootSystem.hs:100`); the author's
+  has 20 systems.
+- `mp-analytic` with a separate zero finder `zerosUpTo` (`MP/Zeta.hs:75`)
+  that reads `montrepol/oracles/zeta-zeros-odlyzko_checked.txt`
+  (`test/Main.hs:14`).
+- A model of 34 IDs, 10 mutants and 10 authorities, with its own
+  `CONFORMANCE.md` (77 lines).
+- 80 tests (mp-check 5, mp-linalg 19, mp-lie 13, mp-seq 8, mp-analytic 12,
+  mp-gate 23), all passing; `mp-gate: R1-R6 hold over 6 packages`; 10 of 10
+  mutants caught. CI run 71 and honesty run 51 on `ee9176b` both passed.
+
+Nothing in it should be read as a statement about the author's code. If it
+is kept, its role is limited to what the Dex determinant check compares
+against (section 6).
+
+## 6. The Dex dual oracle (`dex/`)
 
 [Dex](https://github.com/google-research/dex-lang) is Google Research's
 typed functional array language, compiled through LLVM. Each check has a
-repository side and a Dex side; both draw the same inputs from SplitMix64
-with seed `0x5eed`, written separately in each language, and print one line
-per result. CI requires identical output. Full notes: `docs/dex-oracle.md`.
+repository side and a Dex side, both drawing the same inputs from SplitMix64
+with seed `0x5eed`, written separately in each language; CI requires
+byte-identical output. Build and run details are in `docs/dex-oracle.md`.
 
 **`dex/scala/Poly64Vectors.scala`** (49 lines). Repository side for Poly64.
 Its own SplitMix64 (lines 12-18); `small(k)` uses
@@ -678,9 +589,13 @@ with exponents up to 6 in each variable; no result is zero. Run time 1.8 to
 
 **`dex/haskell/BareissVectors.hs`** (50 lines). Repository side for the
 determinant: n = 1 + w mod 6 (line 30), n² entries `(w mod 41) − 20`
-(lines 36-46) drawn with `MP.Check.Random`, determinant by
-`montrepol_checked`'s `MP.Matrix.det` (line 33). Built directly with `ghc`
-and include paths into `mp-linalg` and `mp-check` (comment at lines 6-9).
+(36-46) drawn with `MP.Check.Random`, determinant by `MP.Matrix.det`
+(line 33), compiled with include paths into `montrepol_checked`'s
+`mp-linalg` and `mp-check` (comment at 6-9). It is stale: against the
+restored `montrepol/packages/mp-linalg` it does not compile (GHC 9.10.1,
+error at 33:83: `det` expects a `Matrix n n a`, `fromLists` now returns
+`Maybe (Matrix m n Integer)`). The random generator it uses,
+`MP/Check/Random.hs`, is the same file in both trees.
 
 **`dex/det.dx`** (84 lines). Dex side for the determinant: the same
 SplitMix64 and `urem`; `mat_at` (45) embeds the n×n matrix in a 6×6 `Int64`
@@ -689,222 +604,226 @@ matrix with an identity block (lines 48-56); `leibniz` (62) sums over all
 (65) and multiplies each product by the sign from its inversion count
 (69-72). Run time 1.26 to 1.36 s over three local runs.
 
-Agreement: 600 of 600 Poly64 lines and 200 of 200 determinants, locally and
-in dex-oracle run 5. Matrix sizes 1 to 6 occur 33, 28, 30, 33, 40 and 36
-times. Negative controls on temporary copies: forcing every permutation sign
-to +1 changes 165 of 200 lines; adding 1 to every product term changes 400
-of 600.
+Agreement, measured locally and in dex-oracle run 5 (commit `9e27e68`):
+600 of 600 Poly64 lines and 200 of 200 determinants identical. Matrix sizes
+1 to 6 occurred 33, 28, 30, 33, 40 and 36 times. Negative controls on
+temporary copies: forcing every permutation sign to +1 changed 165 of 200
+lines; adding 1 to every product term changed 400 of 600. The Poly64 result
+is a check of `src/` and still holds. The determinant result is a check of
+`montrepol_checked`'s Bareiss, not of the author's `det` in
+`montrepol/packages/mp-linalg/src/MP/Matrix.hs:210`, which has its own
+Leibniz oracle in the same file (`detLeibniz`, 242) and passes LA-04.
 
-### 7. Workflows
+## 7. Root workflows (`.github/workflows/`)
 
-**`.github/workflows/ci.yml`** (180 lines), on pushes and pull requests to
-`main`:
+GitHub runs only these three; the two under `montrepol/.github/` do not run.
 
-| Job | Lines | What it does |
-|---|---|---|
-| `scala-test` | 22-47 | installs scala-cli (32-36), compiles the kernel (38-41), runs `Poly64Test` (43-47) |
-| `native-image` | 52-102 | GraalVM `native-image --shared` for `libuor` (79-87); `continue-on-error` (57), and the command ends in `|| echo` (87) |
-| `cabal` | 108-135 | in `montrepol_checked` (114); cache key on the project, `.cabal` and `.hs` files (126); `cabal update`, build, test, `mp-gate` (129-135) |
-| `cabal-original` | 141-158 | the same in `montrepol/` (148) with `--keep-going` (158); `continue-on-error` (145) |
-| `status` | 163-180 | needs `scala-test` and `cabal` (166) and fails unless both succeeded (174-175) |
+**`ci.yml`** (180 lines), on pushes and pull requests to `main`:
 
-**`.github/workflows/honesty.yml`** (39 lines): in `montrepol_checked`,
-`cabal update`, build, `cabal run mp-gate -- mutants`, then
-`git diff --exit-code` to prove every mutant was reverted (lines 35-39).
+| Job | Lines | What it does | `ee9176b` (run 71) |
+|---|---|---|---|
+| `scala-test` | 22-47 | installs scala-cli, compiles `U64.scala` and `Poly64.scala`, runs `Poly64Test` | success |
+| `native-image` | 52-102 | GraalVM `native-image --shared` for `libuor`; `continue-on-error` (57), and the command ends in `|| echo` (87) | success (the job cannot fail, see 57 and 87) |
+| `cabal` | 108-135 | in `montrepol_checked`: `cabal update`, build, test, `mp-gate` | success |
+| `cabal-original` | 141-158 | in `montrepol/`: `cabal update`, `cabal build all --keep-going`; `continue-on-error` (145) | success |
+| `status` | 163-180 | fails unless `scala-test` and `cabal` succeeded | success |
 
-**`.github/workflows/dex-oracle.yml`** (170 lines): path filters at lines 9
-and 17, so it runs only when `dex/`, the workflow, the Scala kernel, or
-`montrepol_checked`'s `mp-linalg` or `mp-check` change. Job `vectors`
-(line 36) produces the Scala and Haskell outputs and uploads them as
-`oracle-vectors` (70). Job `dex` (75) runs in an `ubuntu:22.04` container
-(80), where LLVM 12 is still packaged (85-92), with
-`STACK_ROOT=/opt/stack-root` because stack refuses a home directory owned by
-another user (82-83). It clones dex-lang at the pinned commit (95-97),
-compiles `static/index.ts` with TypeScript 4.9.5 (119-120) and the runtime
-with clang++-12 (121), builds with stack (123-124), saves a finished build
-under a `...-done` key (111, 133) and a failed or cancelled one under a key
-with the run id (140), runs both `.dx` files (145-148), and diffs the outputs
-(160). The first full build took 10 min 17 s in run 5.
+The restored `montrepol/` is only built here. Its 171 tests, its gate, its
+`CONFORMANCE.md` check and its 13 mutants are not run by any workflow that
+GitHub executes; the results in section 1 come from the build machine.
 
-The originals are kept as `docs/workflows-original/ci.yml.txt` (162 lines)
-and `honesty.yml.txt` (34 lines). The old Cabal job built `montrepol/`
-directly, and the old honesty job ran the mutant replay that does not
-compile.
+**`honesty.yml`** (39 lines): in `montrepol_checked`, `cabal update`, build,
+`cabal run mp-gate -- mutants`, then `git diff --exit-code` (35-39). It
+replays `montrepol_checked`'s 10 mutants. Run 51 on `ee9176b`: success.
 
-### 8. How the parts depend on each other
+**`dex-oracle.yml`** (170 lines): runs only when `dex/`, the workflow, the
+Scala kernel, or `montrepol_checked`'s `mp-linalg` or `mp-check` change
+(path filters at 9-22), so it did not run for the restore. Job `vectors`
+(36) builds the Scala and Haskell outputs; job `dex` (75) runs in an
+`ubuntu:22.04` container (80) for LLVM 12, sets `STACK_ROOT=/opt/stack-root`
+(82-83), clones dex-lang at the pinned commit (95-97), compiles
+`static/index.ts` with TypeScript 4.9.5 and the runtime with clang++-12
+(119-121), builds with stack (123-124), caches a finished build under a
+`-done` key (111, 133) and an unfinished one under a key with the run id
+(140), runs both `.dx` files and diffs the outputs (145-160). The first full
+Dex build took 10 min 17 s in run 5; run 5 was green.
 
-    Poly64.scala <- U64.scala
-    Poly64.scala <- UorExports.scala            (C ABI, native image)
-    Poly64.scala <- Poly64Test.scala            (munit)
-    Poly64.scala <- dex/scala/Poly64Vectors.scala  ==diff==  dex/poly64.dx
+`docs/workflows-original/ci.yml.txt` (162 lines) and `honesty.yml.txt`
+(34 lines) are the root workflows as they were before they were rewritten.
 
-    montrepol_checked:
-      mp-check <- (test suites of all packages), BareissVectors.hs
-      mp-linalg <- mp-lie, mp-seq, BareissVectors.hs  ==diff==  dex/det.dx
-      (the corrected mp-analytic no longer imports MP.Algebra, so the
-       unchanged mp-analytic.cabal is now complete)
-      mp-analytic test -> montrepol/oracles/zeta-zeros-odlyzko_checked.txt
-      mp-gate -> model/*.toml, packages/*, cabal.project, CONFORMANCE.md
+## 8. Documents (`docs/`)
 
-The original `montrepol/` is built only by the informational CI job. Nothing
-outside it reads `montrepol/oracles/zeta-zeros-odlyzko.txt`.
+| File | Lines | What it is | Status |
+|---|---|---|---|
+| [`docs/README-audit.md`](docs/README-audit.md) | 262 | Claim-by-claim audit of the previous README and of `montrepol/` | Stale for everything about `montrepol/`; its Scala findings hold |
+| [`docs/REPO.md`](docs/REPO.md) | 884 | Earlier file-by-file description of the repository at `67948e5` | Stale in sections 4, 5, 8 and the montrepol rows of its appendix |
+| [`docs/README-original.md`](docs/README-original.md) | 287 | The top-level README as it was at commit `5db9b38`, verbatim | Historical copy |
+| [`docs/dex-oracle.md`](docs/dex-oracle.md) | 113 | The Dex oracle: inputs, outputs, measured agreement, build commands | Determinant half tied to `montrepol_checked` |
+| [`docs/files/src/main/scala/uor/kernel/Poly64.scala.md`](docs/files/src/main/scala/uor/kernel/Poly64.scala.md) | 926 | Detailed walkthrough of `Poly64.scala` (7,527 words) | Current |
+| [`docs/workflows-original/ci.yml.txt`](docs/workflows-original/ci.yml.txt) | 162 | Root `ci.yml` before the rewrite | Historical copy |
+| [`docs/workflows-original/honesty.yml.txt`](docs/workflows-original/honesty.yml.txt) | 34 | Root `honesty.yml` before the rewrite | Historical copy |
 
-### 9. Documents in `docs/`
+## 9. Build and test
 
-| File | Lines | Content |
-|---|---|---|
-| `docs/README-audit.md` | 262 | Claim-by-claim audit of the original README; truncation, fabrication, test, mutant and CI findings |
-| `docs/README-original.md` | 287 | The README at commit `5db9b38`, verbatim |
-| `docs/dex-oracle.md` | 113 | The Dex oracle: what is compared, measured agreement, Dex quirks, build and run commands |
-| `docs/REPO.md` | 884 | The same text as this README, without the badges, the documents table and the license section |
-| `docs/files/src/main/scala/uor/kernel/Poly64.scala.md` | 926 | Detailed walkthrough of `Poly64.scala` (7,527 words), written before the per-file plan was dropped |
-| `docs/workflows-original/ci.yml.txt`, `honesty.yml.txt` | 162, 34 | The workflows before the CI fix |
+    # Scala kernel (Java 21, scala-cli)
+    scala-cli test --scala 3.5.2 --test-only uor.kernel.Poly64Test \
+      src/main/scala/uor/kernel src/test/scala/uor/kernel/Poly64Test.scala
 
-### 10. Build, run and test commands
+    # The author's Haskell monorepo (GHC 9.10.1, cabal 3.12.1.0, libgmp)
+    cd montrepol
+    cabal update                 # once; cabal 3.12 wants an index file
+    cabal build all
+    cabal test all               # 171 tests
+    cabal run mp-gate            # R1-R6
+    cabal run mp-gate -- mutants # 13 mutants; restores every file
+    cabal run mp-gate -- write && git diff --exit-code CONFORMANCE.md
+    cabal run mp-analytic-report # the explicit-formula error table
 
-    # Scala
-    scala-cli test --scala 3.5.2 src/main/scala/uor/kernel src/test/scala/uor/kernel/Poly64Test.scala
-
-    # Haskell, corrected tree
+    # The stale corrected copy, as CI builds it
     cd montrepol_checked && cabal update && cabal build all && cabal test all
-    cabal run mp-gate && cabal run mp-gate -- mutants
 
-    # Dex oracle vectors (repository side)
-    scala-cli run --server=false --scala 3.5.2 src/main/scala/uor/kernel dex/scala/Poly64Vectors.scala -- 200
-    ghc -O0 -outputdir /tmp/bv -o /tmp/bv/bareiss-vectors \
-      -imontrepol_checked/packages/mp-linalg/src -imontrepol_checked/packages/mp-check/src \
-      dex/haskell/BareissVectors.hs && /tmp/bv/bareiss-vectors 200
+    # Dex oracle, repository side
+    scala-cli run --server=false --scala 3.5.2 src/main/scala/uor/kernel \
+      dex/scala/Poly64Vectors.scala -- 200
 
-    # Dex side, from a built dex-lang checkout (see docs/dex-oracle.md)
-    stack exec dex -- --lib-path lib script dex/poly64.dx | sed -n 's/^> \(case .*\)$/\1/p'
+The Dex side needs a dex-lang build (LLVM 12, GHC 8.10.7 through stack);
+`docs/dex-oracle.md` has the steps.
 
-### 11. Open gaps
+## 10. Open gaps
 
-- `montrepol/` itself still does not compile; the fixes exist only in
-  `montrepol_checked/`.
-- `Poly64` equality is by reference, its arrays are public and mutable, and
-  `fromRaw` does not validate its input.
-- Nothing tests `UorExports.scala` beyond building the native image.
-- The Dex oracle covers two-variable Poly64 add/mul/eval and determinants up
-  to 6×6; it does not cover `booleanQuota`, digests, the flat encoding, or
-  any of `mp-lie`, `mp-seq` or `mp-analytic`.
-- Odlyzko's own table and the Odlyzko authority entry remain unverified
-  because his site could not be reached.
+- No workflow GitHub executes runs the restored tree's tests, gate,
+  conformance check or mutant replay. Its own `ci.yml` and `honesty.yml` sit
+  under `montrepol/.github/`, where GitHub does not look.
+- The Dex determinant check covers `montrepol_checked`, not the author's
+  `det`; `BareissVectors.hs` does not compile against the restored code.
+- `montrepol_checked/`, `docs/README-audit.md` and `docs/REPO.md` describe the
+  fabricated tree and have not been revised.
+- `Poly64` (Scala) compares by reference: two equal polynomials are not `==`
+  because the case class holds arrays. Its arrays are public and mutable, and
+  `fromRaw` accepts exponent vectors of the wrong length. Nothing calls the
+  four `UorExports` entry points in a test.
+- The zeta table was compared with LMFDB, not with Odlyzko's own files,
+  which could not be reached.
+- The explicit-formula error is measured, not bounded, as the author's
+  ledger already says.
 
-### Appendix: every file
+## Appendix: every file
 
-All 106 files at commit `67948e5`, with line counts (`wc -l`) and the
-section of this document that describes them. In `montrepol_checked/`, a
-file marked "same" is byte-identical to its counterpart in `montrepol/`.
+All 109 files at `ee9176b`, with `wc -l` line counts and the section that
+describes them. "stale" marks files built from the fabricated tree
+(section 2).
 
 | File | Lines | Section |
 |---|---|---|
 | `.github/workflows/ci.yml` | 180 | 7 |
 | `.github/workflows/dex-oracle.yml` | 170 | 7 |
 | `.github/workflows/honesty.yml` | 39 | 7 |
-| `.gitignore` | 28 | 2 |
-| `LICENSE` | 661 | 2 |
-| `README.md` | 103 | 2 |
+| `.gitignore` | 28 | 1 |
+| `LICENSE` | 661 | 1 |
+| `README.md` | 911 | 1 |
 | `dex/det.dx` | 84 | 6 |
-| `dex/haskell/BareissVectors.hs` | 50 | 6 |
+| `dex/haskell/BareissVectors.hs` | 50 | 6, stale |
 | `dex/poly64.dx` | 113 | 6 |
 | `dex/scala/Poly64Vectors.scala` | 49 | 6 |
-| `docs/README-audit.md` | 262 | 9 |
-| `docs/README-original.md` | 287 | 9 |
-| `docs/dex-oracle.md` | 113 | 9 |
-| `docs/files/src/main/scala/uor/kernel/Poly64.scala.md` | 926 | 9 |
-| `docs/workflows-original/ci.yml.txt` | 162 | 9 |
-| `docs/workflows-original/honesty.yml.txt` | 34 | 9 |
-| `montrepol/.devcontainer/devcontainer.json` | 13 | 4.1 |
+| `docs/README-audit.md` | 262 | 8, stale |
+| `docs/README-original.md` | 287 | 8 |
+| `docs/REPO.md` | 884 | 8, stale |
+| `docs/dex-oracle.md` | 113 | 8 |
+| `docs/files/src/main/scala/uor/kernel/Poly64.scala.md` | 926 | 8 |
+| `docs/workflows-original/ci.yml.txt` | 162 | 8 |
+| `docs/workflows-original/honesty.yml.txt` | 34 | 8 |
+| `montrepol/.devcontainer/devcontainer.json` | 17 | 4.1 |
+| `montrepol/.github/workflows/ci.yml` | 32 | 4.2 |
+| `montrepol/.github/workflows/honesty.yml` | 29 | 4.2 |
 | `montrepol/.gitignore` | 11 | 4.1 |
-| `montrepol/AGENTS.md` | 30 | 4.2 |
-| `montrepol/CONFORMANCE.md` | 77 | 4.2 |
+| `montrepol/AGENTS.md` | 67 | 4.2 |
+| `montrepol/CONFORMANCE.md` | 109 | 4.2 |
 | `montrepol/LICENSE` | 661 | 4.2 |
 | `montrepol/LICENSES/UOR-template-Apache-2.0.txt` | 176 | 4.2 |
 | `montrepol/LICENSES/UOR-template-MIT.txt` | 21 | 4.2 |
-| `montrepol/NOTICE` | 21 | 4.2 |
-| `montrepol/README.md` | 49 | 4.2 |
-| `montrepol/VERIFICATION.md` | 14 | 4.2 |
+| `montrepol/NOTICE` | 26 | 4.2 |
+| `montrepol/README.md` | 85 | 4.2 |
+| `montrepol/VERIFICATION.md` | 77 | 4.2 |
 | `montrepol/cabal.project` | 25 | 4.1 |
-| `montrepol/model/authorities.toml` | 51 | 4.3 |
-| `montrepol/model/ids.toml` | 263 | 4.3 |
-| `montrepol/model/ledger.toml` | 22 | 4.3 |
-| `montrepol/model/mutants.toml` | 83 | 4.3 |
-| `montrepol/oracles/zeta-zeros-odlyzko.txt` | 520 | 4.4 |
-| `montrepol/oracles/zeta-zeros-odlyzko_checked.txt` | 519 | 4.4 |
-| `montrepol/packages/mp-analytic/app/Main.hs` | 14 | 4.9 |
+| `montrepol/model/authorities.toml` | 52 | 4.3 |
+| `montrepol/model/ids.toml` | 301 | 4.3 |
+| `montrepol/model/ledger.toml` | 29 | 4.3 |
+| `montrepol/model/mutants.toml` | 112 | 4.3 |
+| `montrepol/oracles/zeta-zeros-odlyzko.txt` | 520 | 4.8 |
+| `montrepol/oracles/zeta-zeros-odlyzko_checked.txt` | 519 | 4.8 |
+| `montrepol/packages/mp-analytic/app/Main.hs` | 28 | 4.8 |
 | `montrepol/packages/mp-analytic/mp-analytic.cabal` | 28 | 4.1 |
-| `montrepol/packages/mp-analytic/src/MP/Bernoulli.hs` | 24 | 4.9 |
-| `montrepol/packages/mp-analytic/src/MP/ExplicitFormula.hs` | 16 | 4.9 |
-| `montrepol/packages/mp-analytic/src/MP/Primes.hs` | 53 | 4.9 |
-| `montrepol/packages/mp-analytic/src/MP/Zeta.hs` | 41 | 4.9 |
-| `montrepol/packages/mp-analytic/test/Main.hs` | 24 | 4.9 |
+| `montrepol/packages/mp-analytic/src/MP/Bernoulli.hs` | 36 | 4.8 |
+| `montrepol/packages/mp-analytic/src/MP/ExplicitFormula.hs` | 28 | 4.8 |
+| `montrepol/packages/mp-analytic/src/MP/Primes.hs` | 64 | 4.8 |
+| `montrepol/packages/mp-analytic/src/MP/Zeta.hs` | 93 | 4.8 |
+| `montrepol/packages/mp-analytic/test/Main.hs` | 77 | 4.8 |
 | `montrepol/packages/mp-check/mp-check.cabal` | 20 | 4.1 |
-| `montrepol/packages/mp-check/src/MP/Check.hs` | 206 | 4.5 |
-| `montrepol/packages/mp-check/src/MP/Check/Random.hs` | 76 | 4.5 |
-| `montrepol/packages/mp-check/test/Main.hs` | 33 | 4.5 |
-| `montrepol/packages/mp-gate/app/Main.hs` | 97 | 4.10 |
-| `montrepol/packages/mp-gate/app/Mutants.hs` | 66 | 4.10 |
+| `montrepol/packages/mp-check/src/MP/Check.hs` | 212 | 4.4 |
+| `montrepol/packages/mp-check/src/MP/Check/Random.hs` | 76 | 4.4 |
+| `montrepol/packages/mp-check/test/Main.hs` | 33 | 4.4 |
+| `montrepol/packages/mp-gate/app/Main.hs` | 97 | 4.9 |
+| `montrepol/packages/mp-gate/app/Mutants.hs` | 73 | 4.9 |
 | `montrepol/packages/mp-gate/mp-gate.cabal` | 30 | 4.1 |
-| `montrepol/packages/mp-gate/src/MP/Gate/Model.hs` | 103 | 4.10 |
-| `montrepol/packages/mp-gate/src/MP/Gate/Render.hs` | 43 | 4.10 |
-| `montrepol/packages/mp-gate/src/MP/Gate/Rules.hs` | 104 | 4.10 |
-| `montrepol/packages/mp-gate/src/MP/Gate/Scan.hs` | 57 | 4.10 |
-| `montrepol/packages/mp-gate/src/MP/Gate/Toml.hs` | 91 | 4.10 |
-| `montrepol/packages/mp-gate/test/Main.hs` | 57 | 4.10 |
+| `montrepol/packages/mp-gate/src/MP/Gate/Model.hs` | 88 | 4.9 |
+| `montrepol/packages/mp-gate/src/MP/Gate/Render.hs` | 56 | 4.9 |
+| `montrepol/packages/mp-gate/src/MP/Gate/Rules.hs` | 215 | 4.9 |
+| `montrepol/packages/mp-gate/src/MP/Gate/Scan.hs` | 129 | 4.9 |
+| `montrepol/packages/mp-gate/src/MP/Gate/Toml.hs` | 130 | 4.9 |
+| `montrepol/packages/mp-gate/test/Main.hs` | 133 | 4.9 |
 | `montrepol/packages/mp-lie/mp-lie.cabal` | 19 | 4.1 |
-| `montrepol/packages/mp-lie/src/MP/RootSystem.hs` | 79 | 4.7 |
-| `montrepol/packages/mp-lie/test/Main.hs` | 49 | 4.7 |
+| `montrepol/packages/mp-lie/src/MP/RootSystem.hs` | 196 | 4.6 |
+| `montrepol/packages/mp-lie/test/Main.hs` | 127 | 4.6 |
 | `montrepol/packages/mp-linalg/mp-linalg.cabal` | 21 | 4.1 |
-| `montrepol/packages/mp-linalg/src/MP/Algebra.hs` | 110 | 4.6 |
-| `montrepol/packages/mp-linalg/src/MP/Matrix.hs` | 188 | 4.6 |
-| `montrepol/packages/mp-linalg/src/MP/Participation.hs` | 19 | 4.6 |
-| `montrepol/packages/mp-linalg/test/Main.hs` | 103 | 4.6 |
+| `montrepol/packages/mp-linalg/src/MP/Algebra.hs` | 137 | 4.5 |
+| `montrepol/packages/mp-linalg/src/MP/Matrix.hs` | 304 | 4.5 |
+| `montrepol/packages/mp-linalg/src/MP/Participation.hs` | 49 | 4.5 |
+| `montrepol/packages/mp-linalg/test/Main.hs` | 250 | 4.5 |
 | `montrepol/packages/mp-seq/mp-seq.cabal` | 19 | 4.1 |
-| `montrepol/packages/mp-seq/src/MP/Recurrence.hs` | 87 | 4.8 |
-| `montrepol/packages/mp-seq/test/Main.hs` | 63 | 4.8 |
-| `montrepol_checked/.gitignore` | 11 | 5, same |
-| `montrepol_checked/CONFORMANCE.md` | 77 | 5.6 |
-| `montrepol_checked/cabal.project` | 25 | 5, same |
-| `montrepol_checked/model/authorities.toml` | 63 | 5.6 |
-| `montrepol_checked/model/ids.toml` | 263 | 5.6 |
-| `montrepol_checked/model/ledger.toml` | 22 | 5.6 |
-| `montrepol_checked/model/mutants.toml` | 84 | 5.6 |
-| `montrepol_checked/packages/mp-analytic/app/Main.hs` | 14 | 5.4 |
-| `montrepol_checked/packages/mp-analytic/mp-analytic.cabal` | 28 | 5.4, same |
-| `montrepol_checked/packages/mp-analytic/src/MP/Bernoulli.hs` | 35 | 5.4 |
-| `montrepol_checked/packages/mp-analytic/src/MP/ExplicitFormula.hs` | 16 | 5.4 |
-| `montrepol_checked/packages/mp-analytic/src/MP/Primes.hs` | 52 | 5.4 |
-| `montrepol_checked/packages/mp-analytic/src/MP/Zeta.hs` | 89 | 5.4 |
-| `montrepol_checked/packages/mp-analytic/test/Main.hs` | 78 | 5.4 |
-| `montrepol_checked/packages/mp-check/mp-check.cabal` | 20 | 4.5, 5, same |
-| `montrepol_checked/packages/mp-check/src/MP/Check.hs` | 206 | 4.5, 5, same |
-| `montrepol_checked/packages/mp-check/src/MP/Check/Random.hs` | 76 | 4.5, 5, same |
-| `montrepol_checked/packages/mp-check/test/Main.hs` | 33 | 4.5, 5, same |
-| `montrepol_checked/packages/mp-gate/app/Main.hs` | 97 | 5.5, same |
-| `montrepol_checked/packages/mp-gate/app/Mutants.hs` | 55 | 5.5 |
-| `montrepol_checked/packages/mp-gate/mp-gate.cabal` | 30 | 5.5, same |
-| `montrepol_checked/packages/mp-gate/src/MP/Gate/Model.hs` | 109 | 5.5 |
-| `montrepol_checked/packages/mp-gate/src/MP/Gate/Render.hs` | 46 | 5.5 |
-| `montrepol_checked/packages/mp-gate/src/MP/Gate/Rules.hs` | 155 | 5.5 |
-| `montrepol_checked/packages/mp-gate/src/MP/Gate/Scan.hs` | 122 | 5.5 |
-| `montrepol_checked/packages/mp-gate/src/MP/Gate/Toml.hs` | 130 | 5.5 |
-| `montrepol_checked/packages/mp-gate/test/Main.hs` | 91 | 5.5 |
-| `montrepol_checked/packages/mp-lie/mp-lie.cabal` | 19 | 5.2 |
-| `montrepol_checked/packages/mp-lie/src/MP/RootSystem.hs` | 119 | 5.2 |
-| `montrepol_checked/packages/mp-lie/test/Main.hs` | 68 | 5.2 |
-| `montrepol_checked/packages/mp-linalg/mp-linalg.cabal` | 21 | 5.1, same |
-| `montrepol_checked/packages/mp-linalg/src/MP/Algebra.hs` | 124 | 5.1 |
-| `montrepol_checked/packages/mp-linalg/src/MP/Matrix.hs` | 201 | 5.1 |
-| `montrepol_checked/packages/mp-linalg/src/MP/Participation.hs` | 19 | 5.1, same |
-| `montrepol_checked/packages/mp-linalg/test/Main.hs` | 161 | 5.1 |
-| `montrepol_checked/packages/mp-seq/mp-seq.cabal` | 19 | 5.3, same |
-| `montrepol_checked/packages/mp-seq/src/MP/Recurrence.hs` | 87 | 5.3 |
-| `montrepol_checked/packages/mp-seq/test/Main.hs` | 63 | 5.3 |
-| `src/main/scala/uor/ffi/UorExports.scala` | 111 | 3.3 |
-| `src/main/scala/uor/kernel/Poly64.scala` | 185 | 3.1 |
-| `src/main/scala/uor/kernel/U64.scala` | 8 | 3.2 |
-| `src/test/scala/uor/kernel/Poly64Test.scala` | 83 | 3.4 |
+| `montrepol/packages/mp-seq/src/MP/Recurrence.hs` | 87 | 4.7 |
+| `montrepol/packages/mp-seq/test/Main.hs` | 63 | 4.7 |
+| `montrepol_checked/.gitignore` | 11 | 5, stale |
+| `montrepol_checked/CONFORMANCE.md` | 77 | 5, stale |
+| `montrepol_checked/cabal.project` | 25 | 5, stale |
+| `montrepol_checked/model/authorities.toml` | 63 | 5, stale |
+| `montrepol_checked/model/ids.toml` | 263 | 5, stale |
+| `montrepol_checked/model/ledger.toml` | 22 | 5, stale |
+| `montrepol_checked/model/mutants.toml` | 84 | 5, stale |
+| `montrepol_checked/packages/mp-analytic/app/Main.hs` | 14 | 5, stale |
+| `montrepol_checked/packages/mp-analytic/mp-analytic.cabal` | 28 | 5, stale |
+| `montrepol_checked/packages/mp-analytic/src/MP/Bernoulli.hs` | 35 | 5, stale |
+| `montrepol_checked/packages/mp-analytic/src/MP/ExplicitFormula.hs` | 16 | 5, stale |
+| `montrepol_checked/packages/mp-analytic/src/MP/Primes.hs` | 52 | 5, stale |
+| `montrepol_checked/packages/mp-analytic/src/MP/Zeta.hs` | 89 | 5, stale |
+| `montrepol_checked/packages/mp-analytic/test/Main.hs` | 78 | 5, stale |
+| `montrepol_checked/packages/mp-check/mp-check.cabal` | 20 | 5, stale |
+| `montrepol_checked/packages/mp-check/src/MP/Check.hs` | 206 | 5, stale |
+| `montrepol_checked/packages/mp-check/src/MP/Check/Random.hs` | 76 | 5, stale |
+| `montrepol_checked/packages/mp-check/test/Main.hs` | 33 | 5, stale |
+| `montrepol_checked/packages/mp-gate/app/Main.hs` | 97 | 5, stale |
+| `montrepol_checked/packages/mp-gate/app/Mutants.hs` | 55 | 5, stale |
+| `montrepol_checked/packages/mp-gate/mp-gate.cabal` | 30 | 5, stale |
+| `montrepol_checked/packages/mp-gate/src/MP/Gate/Model.hs` | 109 | 5, stale |
+| `montrepol_checked/packages/mp-gate/src/MP/Gate/Render.hs` | 46 | 5, stale |
+| `montrepol_checked/packages/mp-gate/src/MP/Gate/Rules.hs` | 155 | 5, stale |
+| `montrepol_checked/packages/mp-gate/src/MP/Gate/Scan.hs` | 122 | 5, stale |
+| `montrepol_checked/packages/mp-gate/src/MP/Gate/Toml.hs` | 130 | 5, stale |
+| `montrepol_checked/packages/mp-gate/test/Main.hs` | 91 | 5, stale |
+| `montrepol_checked/packages/mp-lie/mp-lie.cabal` | 19 | 5, stale |
+| `montrepol_checked/packages/mp-lie/src/MP/RootSystem.hs` | 119 | 5, stale |
+| `montrepol_checked/packages/mp-lie/test/Main.hs` | 68 | 5, stale |
+| `montrepol_checked/packages/mp-linalg/mp-linalg.cabal` | 21 | 5, stale |
+| `montrepol_checked/packages/mp-linalg/src/MP/Algebra.hs` | 124 | 5, stale |
+| `montrepol_checked/packages/mp-linalg/src/MP/Matrix.hs` | 201 | 5, stale |
+| `montrepol_checked/packages/mp-linalg/src/MP/Participation.hs` | 19 | 5, stale |
+| `montrepol_checked/packages/mp-linalg/test/Main.hs` | 161 | 5, stale |
+| `montrepol_checked/packages/mp-seq/mp-seq.cabal` | 19 | 5, stale |
+| `montrepol_checked/packages/mp-seq/src/MP/Recurrence.hs` | 87 | 5, stale |
+| `montrepol_checked/packages/mp-seq/test/Main.hs` | 63 | 5, stale |
+| `src/main/scala/uor/ffi/UorExports.scala` | 111 | 3 |
+| `src/main/scala/uor/kernel/Poly64.scala` | 185 | 3 |
+| `src/main/scala/uor/kernel/U64.scala` | 8 | 3 |
+| `src/test/scala/uor/kernel/Poly64Test.scala` | 83 | 3 |
 
 ## License
 
