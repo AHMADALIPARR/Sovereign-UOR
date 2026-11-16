@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+
 -- | Finite crystallographic root systems, from vectors to Weyl group orders.
 --
 -- Nothing about a root system is typed in by hand beyond its vectors. Simple

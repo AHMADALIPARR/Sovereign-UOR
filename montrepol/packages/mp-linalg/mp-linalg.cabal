@@ -1,4 +1,5 @@
 cabal-version:      3.0
+-- SPDX-License-Identifier: AGPL-3.0-or-later
 name:               mp-linalg
 version:            0.1.0.0
 synopsis:           Exact linear algebra over semirings, with dimensions in the type.

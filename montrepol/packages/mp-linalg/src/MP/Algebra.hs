@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+
 -- | The algebraic structures the matrix code is generic over.
 --
 -- 'Num' is not used: it bundles 'abs', 'signum' and 'fromInteger', which a
