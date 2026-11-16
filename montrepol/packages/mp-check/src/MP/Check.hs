@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+
 -- | The test harness every package uses.
 --
 -- A test carries a conformance ID. The gate reads those IDs out of the test

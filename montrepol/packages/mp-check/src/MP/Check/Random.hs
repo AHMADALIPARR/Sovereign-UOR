@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+
 -- | SplitMix64 (Steele, Lea, Flood 2014; the constants of Java's
 -- @SplittableRandom@), written out rather than imported so
 -- the harness has no dependency the gate would have to trust.
