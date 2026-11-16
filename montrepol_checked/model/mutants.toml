@@ -1,0 +1,84 @@
+# Planted defects. Each mutant must be caught by the tests named in `expect`.
+# The honesty workflow applies every mutant in turn, runs the package's test
+# suite, requires that every named ID reports FAIL, and that the tree is
+# restored afterwards.
+
+[[mutant]]
+name = "Weyl order: orbit sizes added instead of multiplied"
+package = "mp-lie"
+file = "packages/mp-lie/src/MP/RootSystem.hs"
+old = "toInteger (Set.size (orbit idx i)) * go rest"
+new = "toInteger (Set.size (orbit idx i)) + go rest"
+expect = ["LI-04"]
+
+[[mutant]]
+name = "Root closure: stops after the simple roots"
+package = "mp-lie"
+file = "packages/mp-lie/src/MP/RootSystem.hs"
+old = "new = next `Set.difference` seen"
+new = "new = Set.empty `Set.intersection` next"
+expect = ["LI-01"]
+
+[[mutant]]
+name = "Berlekamp-Massey: length update off by one"
+package = "mp-seq"
+file = "packages/mp-seq/src/MP/Recurrence.hs"
+old = "if 2 * l <= k"
+new = "if 2 * l < k"
+expect = ["SQ-01", "SQ-02"]
+
+[[mutant]]
+name = "Sieve: crosses off with stride 2i"
+package = "mp-analytic"
+file = "packages/mp-analytic/src/MP/Primes.hs"
+old = "[i * i, i * i + i .. n]"
+new = "[i * i, i * i + 2 * i .. n]"
+expect = ["AN-01"]
+
+[[mutant]]
+name = "Euler-Maclaurin: sign of the N^-s/2 term flipped"
+package = "mp-analytic"
+file = "packages/mp-analytic/src/MP/Zeta.hs"
+old = "direct + tailTerm - half + corrections"
+new = "direct + tailTerm + half + corrections"
+expect = ["AN-04"]
+
+[[mutant]]
+name = "theta: -pi/8 dropped"
+package = "mp-analytic"
+file = "packages/mp-analytic/src/MP/Zeta.hs"
+old = "t / 2 * log (t / (2 * pi)) - t / 2 - pi / 8"
+new = "t / 2 * log (t / (2 * pi)) - t / 2"
+expect = ["AN-05"]
+
+[[mutant]]
+name = "Bernoulli: binomial C(m, k) instead of C(m + 1, k)"
+package = "mp-analytic"
+file = "packages/mp-analytic/src/MP/Bernoulli.hs"
+old = "choose (m' + 1) k"
+new = "choose m' k"
+expect = ["AN-03"]
+
+[[mutant]]
+name = "Gate: R5 partial-function list emptied"
+package = "mp-gate"
+file = "packages/mp-gate/src/MP/Gate/Scan.hs"
+old = "names = [\"err\" <> \"or\""
+new = "names = drop 99 [\"err\" <> \"or\""
+expect = ["GT-05"]
+
+[[mutant]]
+name = "Gate: R3 untested-ID check disabled"
+package = "mp-gate"
+file = "packages/mp-gate/src/MP/Gate/Rules.hs"
+old = "(rowId r, rowPackage r) `notElem` tags]"
+new = "(rowId r, rowPackage r) `notElem` tags, False]"
+expect = ["GT-03"]
+
+[[mutant]]
+name = "Harness: property runner stops after case 0"
+package = "mp-check"
+file = "packages/mp-check/src/MP/Check.hs"
+old = "Result [] -> go (c + 1) s'"
+new = "Result [] -> if c >= 0 then Nothing else go (c + 1) s'"
+expect = ["CK-02"]
