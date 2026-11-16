@@ -210,6 +210,8 @@ jobs:
             ~/.stack
             montrepol/dex/.toolchain
           key: ${{ runner.os }}-dex-${{ hashFiles('montrepol/dex/build.sh') }}
+      # Headers dex-lang needs to build its runtime (dexrt.cpp includes png.h).
+      - run: sudo apt-get update && sudo apt-get install -y libpng-dev libgmp-dev zlib1g-dev libtinfo-dev libnuma-dev pkg-config
       - run: bash dex/build.sh
       - run: bash dex/check.sh
 

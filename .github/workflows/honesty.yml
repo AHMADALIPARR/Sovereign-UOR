@@ -36,6 +36,8 @@ jobs:
       # Proof mutants are replayed with Agda, refinement mutants with Liquid
       # Haskell and Z3; the liquid layer resolves against Hackage.
       - run: sudo apt-get update && sudo apt-get install -y agda-bin z3
+      # Headers dex-lang needs to build its runtime (dexrt.cpp includes png.h).
+      - run: sudo apt-get install -y libpng-dev libgmp-dev zlib1g-dev libtinfo-dev libnuma-dev pkg-config
       - uses: actions/cache@v4
         with:
           path: montrepol/liquid/dist-newstyle
