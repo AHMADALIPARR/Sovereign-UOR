@@ -18,40 +18,116 @@ main =
   runSuite
     "mp-gate"
     [ unit "GT-00" "a clean repository has no violations" $ rulesFired clean === []
-    , unit "GT-01" "R1 fires on a hand-edited CONFORMANCE.md" $ fired r1Edited === [R1]
-    , unit "GT-01" "R1 fires on a duplicated ID" $ fired r1Dup === [R1]
-    , unit "GT-02" "R2 fires on an open ID" $ fired r2Open === [R2]
-    , unit "GT-03" "R3 fires on an ID with no test" $ fired r3Untested === [R3]
-    , unit "GT-04" "R4 fires on a deferral marker" $ fired r4Marker === [R4]
-    , unit "GT-05" "R5 fires on a partial function" $ fired r5Partial === [R5]
-    , unit "GT-06" "R6 fires on an outside dependency" $ fired r6Outside === [R6]
-    , unit "GT-07" "the TOML reader rejects what it cannot parse" $ parseFail
+    , unit "GT-01" "R1: a hand-edited CONFORMANCE.md fires" $
+        rulesFired clean {repoConformance = repoConformance clean <> "edited\n"} === [R1]
+    , unit "GT-01" "R1: a duplicated ID fires" $
+        rulesFired (withIds (idRow "GA-01" "build" "x" <> idRow "GA-01" "build" "x")) === [R1]
+    , unit "GT-01" "R1: an unparsable model fires" $
+        rulesFired clean {repoIds = "this is not toml\n"} === [R1]
+    , unit "GT-02" "R2: an ID at level open fires" $
+        rulesFired (withIds (idRow "GA-01" "open" "measured")) === [R2]
+    , unit "GT-02" "R2: an asserting word in an open claim fires" $
+        rulesFired (withLedger (openClaim ("it pro" <> "ves the bound") <> trueClaim)) === [R2]
+    , unit "GT-02" "R2: some-true without an authority fires" $
+        rulesFired (withLedger (openClaim "a measurement" <> trueClaim <> bareTrue)) === [R2]
+    , unit "GT-02" "R2: a citation of an unknown authority fires" $
+        rulesFired (withIds (idRow "GA-01" "build" "x" <> "authorities = [\"nobody-1999\"]\n")) === [R2]
+    , unit "GT-03" "R3: an ID with no test fires" $
+        rulesFired (withIds (idRow "GA-01" "build" "x" <> idRow "GA-02" "build" "y")) === [R3]
+    , unit "GT-03" "R3: a test tagged with an unregistered ID fires" $
+        rulesFired (withTest "t = unit \"GA-01\" \"x\" pass\nu = prop \"GA-09\" \"y\" g p\n") === [R3]
+    , unit "GT-04" "R4: a deferral marker fires" $
+        rulesFired (withSrc ("-- " <> "TO" <> "DO: finish\nf = 1\n")) === [R4]
+    , unit "GT-04" "R4: a stub fires" $
+        rulesFired (withSrc "f :: Int\nf = undefined\n") === [R4]
+    , unit "GT-04" "R4: the same word in a comment or a string does not fire" $
+        rulesFired (withSrc "-- undefined behaviour\nf = \"undefined\"\n") === []
+    , unit "GT-05" "R5: a partial function fires" $
+        rulesFired (withSrc "f xs = head xs\n") === [R5]
+    , unit "GT-05" "R5: a partial operator fires" $
+        rulesFired (withSrc "f xs = xs !! 2\n") === [R5]
+    , unit "GT-05" "R5: a primed name, a string and a comment do not fire" $
+        rulesFired (withSrc "f = head' \"head\" -- head of the list\n  where head' = 'h'\n") === []
+    , unit "GT-05" "R5: removing -Werror fires" $
+        rulesFired clean {repoProject = "packages: packages/pkg-a\nactive-repositories: :none\nghc-options: -Wall -Wincomplete-uni-patterns\n"} === [R5]
+    , unit "GT-06" "R6: a dependency from outside fires" $
+        rulesFired (withCabal "build-depends: base >=4 && <5, aeson >=2 && <3\n") === [R6]
+    , unit "GT-06" "R6: an unbounded boot dependency fires" $
+        rulesFired (withCabal "build-depends: base\n") === [R6]
+    , unit "GT-06" "R6: a package directory missing from cabal.project fires" $
+        rulesFired clean {repoPackageDirs = ["pkg-a", "pkg-b"]} === [R6]
+    , unit "GT-06" "R6: re-enabling a package repository fires" $
+        rulesFired clean {repoProject = "packages: packages/pkg-a\nghc-options: -Wall -Werror -Wincomplete-uni-patterns\n"} === [R6]
+    , unit "GT-07" "TOML: arrays of tables, escapes, arrays, comments" $
+        parseToml "a = \"x # not a comment\" # a comment\n[[t]]\nk = \"q\\\"uote\"\nn = [\"p\", \"q\"]\n[[t]]\nk = \"2\"\n"
+          === Right
+            ( Doc
+                [("a", VString "x # not a comment")]
+                [("t", [[("k", VString "q\"uote"), ("n", VStrings ["p", "q"])], [("k", VString "2")]])]
+            )
+    , unit "GT-07" "TOML: a line it cannot read is an error, not a guess" $
+        assert "accepted garbage" (either (const True) (const False) (parseToml "k = \"ok\"\nwhat is this\n"))
     ]
-  where
-    fired r = rulesFired r
-    rulesFired repo = nub (sort (map violationRule (checkRepo repo)))
 
--- Synthetic repositories for the tests. The real one is loaded by the CLI.
+------------------------------------------------------------------------------
+-- A small repository that passes, and ways to break it
+
+rulesFired :: Repo -> [Rule]
+rulesFired = sort . nub . map (\(Violation r _) -> r) . checkRepo
+
+idRow :: String -> String -> String -> String
+idRow i level claim =
+  "[[id]]\nid = \"" <> i <> "\"\npackage = \"pkg-a\"\nlevel = \"" <> level <> "\"\nclaim = \"" <> claim <> "\"\noracle = \"an oracle\"\n"
+
+openClaim :: String -> String
+openClaim s = "[[claim]]\nkey = \"m\"\nlevel = \"open\"\nstatement = \"" <> s <> "\"\nevidence = \"a report\"\n"
+
+trueClaim :: String
+trueClaim = "[[claim]]\nkey = \"t\"\nlevel = \"some-true\"\nstatement = \"a theorem\"\nevidence = \"a book\"\nauthorities = [\"book-2000\"]\n"
+
+bareTrue :: String
+bareTrue = "[[claim]]\nkey = \"u\"\nlevel = \"some-true\"\nstatement = \"another\"\nevidence = \"none\"\n"
+
+authorities :: String
+authorities = "[[authority]]\nkey = \"book-2000\"\ncite = \"A. Author, A Book, 2000\"\n"
+
+testSrc :: String
+testSrc = "t = unit \"GA-01\" \"x\" pass\n"
+
+project :: String
+project = "packages: packages/pkg-a\nactive-repositories: :none\nghc-options: -Wall -Werror -Wincomplete-uni-patterns\n"
+
+mkRepo :: String -> String -> String -> String -> String -> Repo
+mkRepo ids ledger cabal src test =
+  let conformance = either (const "") renderConformance (readModel ids ledger authorities)
+   in Repo
+        { repoIds = ids
+        , repoLedger = ledger
+        , repoAuthorities = authorities
+        , repoConformance = conformance
+        , repoProject = project
+        , repoPackageDirs = ["pkg-a"]
+        , repoPackages =
+            [ Package
+                "pkg-a"
+                cabal
+                [SourceFile "pkg-a/src/A.hs" src False, SourceFile "pkg-a/test/Main.hs" test True]
+            ]
+        }
+
+cleanIds, cleanLedger, cleanCabal, cleanSrc :: String
+cleanIds = idRow "GA-01" "build" "a claim"
+cleanLedger = openClaim "a measurement" <> trueClaim
+cleanCabal = "build-depends: base >=4 && <5\n"
+cleanSrc = "module A where\nf :: Int -> Int\nf x = x + 1\n"
+
 clean :: Repo
-clean = Repo ids ledger auths conf project packages pkgs
-  where
-    ids = "spec = \"montrepol/1\"\n\n[[id]]\nid = \"CK-01\"\npackage = \"mp-check\"\nlevel = \"build\"\nclaim = \"x\"\noracle = \"y\""
-    ledger = ""
-    auths = ""
-    conf = "# CONFORMANCE\n\nGenerated from `model/` by `cabal run mp-gate -- write`. Do not edit.\n"
-    project = "packages: packages/*\nactive-repositories: :none"
-    packages = ["mp-check"]
-    pkgs = [Package "mp-check" "" [SourceFile "packages/mp-check/test/Main.hs" "prop \"CK-01\" \"x\" g p" True]]
+clean = mkRepo cleanIds cleanLedger cleanCabal cleanSrc testSrc
 
-r1Edited = clean { repoConformance = repoConformance clean <> "\n# edited" }
-r1Dup = clean { repoIds = repoIds clean <> "\n[[id]]\nid = \"CK-01\"\npackage = \"mp-check\"\nlevel = \"build\"\nclaim = \"z\"\noracle = \"w\"" }
-r2Open = clean { repoIds = "spec = \"montrepol/1\"\n\n[[id]]\nid = \"CK-99\"\npackage = \"mp-check\"\nlevel = \"open\"\nclaim = \"x\"\noracle = \"y\"" }
-r3Untested = clean { repoIds = "spec = \"montrepol/1\"\n\n[[id]]\nid = \"CK-99\"\npackage = \"mp-check\"\nlevel = \"build\"\nclaim = \"x\"\noracle = \"y\"" }
-r4Marker = clean { repoPackages = [Package "mp-check" "" [SourceFile "x.hs" "x = 1 -- " <> "TODO" True]] }
-r5Partial = clean { repoPackages = [Package "mp-check" "" [SourceFile "x.hs" "x = head ys" True]] }
-r6Outside = clean { repoProject = "packages: packages/*\nactive-repositories: hackage.haskell.org" }
-
-parseFail :: Result
-parseFail = case parseToml "[" of
-  Left _ -> pass
-  Right _ -> failWith "accepted an unclosed table"
+-- Each regenerates CONFORMANCE.md, so only the planted defect differs.
+withIds, withLedger, withCabal, withSrc, withTest :: String -> Repo
+withIds ids = mkRepo ids cleanLedger cleanCabal cleanSrc testSrc
+withLedger l = mkRepo cleanIds l cleanCabal cleanSrc testSrc
+withCabal c = mkRepo cleanIds cleanLedger c cleanSrc testSrc
+withSrc s = mkRepo cleanIds cleanLedger cleanCabal s testSrc
+withTest t = mkRepo cleanIds cleanLedger cleanCabal cleanSrc t
