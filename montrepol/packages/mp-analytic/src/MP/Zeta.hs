@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+
 -- | The Riemann zeta function, Hardy's Z function, and its zeros on the
 -- critical line, in double precision.
 --

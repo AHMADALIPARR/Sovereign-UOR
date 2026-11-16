@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+
 -- | Primes, the von Mangoldt function and Chebyshev's psi.
 --
 -- @psi(x) = sum_{n <= x} Lambda(n)@, where @Lambda(p^k) = log p@ and is zero

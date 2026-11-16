@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+
 -- | Riemann–von Mangoldt explicit formula, truncated at finitely many zeros.
 --
 -- For @x > 1@ not a prime power,

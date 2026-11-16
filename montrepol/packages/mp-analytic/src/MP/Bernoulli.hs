@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+
 -- | Bernoulli numbers, exactly.
 --
 -- Defined by @B_0 = 1@ and @sum_{k=0}^{m} C(m+1, k) B_k = 0@ for @m >= 1@,
