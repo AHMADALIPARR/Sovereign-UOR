@@ -1,3 +1,7 @@
+-- SPDX-License-Identifier: AGPL-3.0-only
+-- Also licensed under the SnapKitty Opaque License (LicenseRef-SnapKitty-Opaque-1.0); see README.md.
+-- Copyright (C) 2026 Ahmad Parr
+
 -- | zeta by Euler-Maclaurin, Riemann-Siegel theta, and Hardy Z.
 --
 -- The closed forms for even integers use this package's Bernoulli numbers
