@@ -9,12 +9,54 @@ name: honesty
 on:
   push:
     branches: [main]
+    # Docs-only pushes were stacking 360-minute mutant jobs (runs 73-76).
+    paths-ignore:
+      - "docs/**"
+      - "README.md"
+      - "**/*.png"
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "README.md"
+      - "**/*.png"
   workflow_dispatch:
 
+# Same reason as ci.yml: do not key concurrency on the branch name, or a
+# delayed older SHA can cancel the tip. honesty previously had no
+# concurrency at all, so five mutant jobs ran at once.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
 jobs:
+  gate:
+    name: Latest commit only
+    runs-on: ubuntu-latest
+    outputs:
+      continue: ${{ steps.check.outputs.continue }}
+    steps:
+      - id: check
+        name: Compare this SHA to the branch tip
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" != "push" ]; then
+            echo "continue=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          tip=$(git ls-remote --heads "https://github.com/${{ github.repository }}.git" "${{ github.ref_name }}" | awk '{print $1}')
+          echo "branch tip: $tip"
+          echo "this sha:   ${{ github.sha }}"
+          if [ "$tip" = "${{ github.sha }}" ]; then
+            echo "continue=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "This run is for an older commit; skipping the rest."
+            echo "continue=false" >> "$GITHUB_OUTPUT"
+          fi
+
   mutants:
     name: Mutant replay (montrepol)
+    needs: [gate]
+    if: needs.gate.outputs.continue == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     defaults:
