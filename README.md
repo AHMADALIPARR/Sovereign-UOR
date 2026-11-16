@@ -708,6 +708,66 @@ The Dex side needs a dex-lang build (LLVM 12, GHC 8.10.7 through stack);
   ledger already says.
 
 
+## Benchmarks
+
+Measured on 2026-11-15 between 19:12 and 19:20 PST (America/Los_Angeles) on
+the build machine: 8-core Intel Xeon virtual machine (lscpu reports
+"Intel(R) Xeon(R) Processor", 1 thread per core), 15 GiB RAM, Debian 13
+(trixie), Linux 6.12, GHC 9.10.1, cabal 3.12.1.0, hyperfine 1.19.0, Scala
+3.5.2 on Temurin Java 21.0.12. An unrelated single-threaded program was
+running on one of the eight cores during the runs.
+
+The Haskell binaries were built from `montrepol/` at commit `118d02e` (unchanged since), whose
+`montrepol/` is byte-identical to the author's second zip, with
+`cabal build all -j1` (the project's own `-Wall -Werror` flags). Each binary
+was then run directly, from its package directory for the test suites and from
+`montrepol/` for the other two:
+
+    hyperfine -N --warmup 2 --runs 10 <binary>
+
+Path of each binary: `cabal list-bin <name>`. Times in milliseconds, 10 runs.
+
+| Binary | Checks passed | Mean ± σ | Min | Max |
+|---|---|---|---|---|
+| `mp-analytic-test` | 10 | 1466.8 ± 54.5 | 1436.3 | 1611.2 |
+| `mp-check-test` | 5 | 2.0 ± 0.4 | 1.6 | 2.9 |
+| `mp-gate-test` | 47 | 8.5 ± 1.0 | 7.5 | 10.4 |
+| `mp-hcalc-test` | 11 | 125.0 ± 1.5 | 122.9 | 127.2 |
+| `mp-lambda-test` | 19 | 17.0 ± 1.2 | 15.4 | 19.0 |
+| `mp-lie-test` | 106 | 3210.2 ± 82.6 | 3139.8 | 3384.9 |
+| `mp-linalg-test` | 19 | 760.8 ± 13.4 | 747.9 | 781.7 |
+| `mp-seq-test` | 8 | 18.9 ± 1.3 | 17.7 | 22.0 |
+| `mp-analytic-report` | — | 1473.6 ± 28.3 | 1434.7 | 1514.7 |
+| `mp-gate` | — | 58.2 ± 3.3 | 54.6 | 65.2 |
+
+Compared with the numbers recorded earlier:
+
+- Checks: the eight suites pass 225 checks, 0 fail. `montrepol/README.md:12`
+  says "182 checks across 6 packages"; the second zip has 8 packages with
+  tests, so that line does not match the code. The 171 in section 1 was
+  measured on the first zip (`ee9176b`).
+- `mp-analytic-report`: section 1 records 2.4 s wall time, one reading on the
+  first zip. This rerun on the second zip averages 1.47 s. The output (512
+  zeros on (10, 827] and the error table) was identical on both runs made
+  here. `model/ledger.toml` gives max |err|/sqrt(x) as 0.529, 0.317, 0.199,
+  0.112 for M = 0, 10, 100, 512; the report prints 0.528519, 0.316488,
+  0.199399, 0.111709, so M = 10 rounds to 0.316, not 0.317.
+- Mutants: `model/mutants.toml` has 34, as `montrepol/VERIFICATION.md:40`
+  says. On this machine 31 of 34 were caught; the 3 Dex mutants were not
+  replayed because the Dex toolchain was not built here. On GitHub Actions,
+  `honesty` run 43800363987 (commit `d6c9649`) caught 34 of 34, Dex included.
+- Scala `Poly64` (section 3.1): the probe in
+  `docs/files/src/main/scala/uor/kernel/Poly64.scala.md` section 12, run 10
+  times with
+  `scala-cli run --server=false --scala 3.5.2 src/main/scala/uor/kernel /tmp/p64exp/Exp.scala`.
+  Lines E1 to E18 matched the recorded output every time (apart from a
+  trailing space after E14). E19, the 938×938-term product, took 292.9 to
+  467.3 ms, median 328.7 ms, against 351.2 ms recorded; it gave 55,003 terms
+  every time, as recorded. E20, the sum, took 36.2 to 72.6 µs, median
+  46.5 µs, against 40.6 µs recorded. The recorded values are inside the
+  measured ranges, but the spread between runs is large, so these two
+  timings are only an order of magnitude.
+
 ## Appendix: Repository Layout
 
 All 109 files present at commit `ee9176b`. Line counts are from `wc -l`.  
