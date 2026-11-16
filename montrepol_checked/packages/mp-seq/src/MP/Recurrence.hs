@@ -1,3 +1,7 @@
+-- SPDX-License-Identifier: AGPL-3.0-only
+-- Also licensed under the SnapKitty Opaque License (LicenseRef-SnapKitty-Opaque-1.0); see README.md.
+-- Copyright (C) 2026 Ahmad Parr
+
 -- | Linear recurrences over a field.
 --
 -- A connection polynomial @C(x) = 1 + c_1 x + ... + c_L x^L@ generates @s@
