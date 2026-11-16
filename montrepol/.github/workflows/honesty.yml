@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Falsifiability: every planted defect in model/mutants.toml must be caught by
 # the tests it names. Split from `ci` so a failure here reads as "a test can no
 # longer fail", not "the code is broken".
@@ -23,6 +24,22 @@ jobs:
             ~/.cabal/store
             dist-newstyle
           key: ${{ runner.os }}-ghc-9.10.1-${{ hashFiles('cabal.project', 'packages/*/*.cabal') }}
+      # Proof mutants are replayed with Agda, refinement mutants with Liquid
+      # Haskell and Z3; the liquid layer resolves against Hackage.
+      - run: sudo apt-get update && sudo apt-get install -y agda-bin z3
+      - uses: actions/cache@v4
+        with:
+          path: liquid/dist-newstyle
+          key: ${{ runner.os }}-liquid-${{ hashFiles('liquid/cabal.project', 'liquid/*.cabal') }}
+      - run: cabal update
+      # Dex mutants are replayed with the pinned Dex toolchain.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.stack
+            dex/.toolchain
+          key: ${{ runner.os }}-dex-${{ hashFiles('dex/build.sh') }}
+      - run: ./dex/build.sh
       - run: cabal build all
       - run: cabal run mp-gate -- mutants
       # The mutant run restores every file it touches; prove the tree is clean.

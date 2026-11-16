@@ -9,3 +9,13 @@ cabal.project.local*
 *~
 .idea/
 .vscode/
+
+# Agda interface files.
+*.agdai
+_build/
+
+# The Dex toolchain, built by dex/build.sh.
+dex/.toolchain/
+
+# Liquid Haskell writes its reports next to the sources it checks.
+.liquid/

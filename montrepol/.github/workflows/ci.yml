@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # The acceptance gate. `honesty.yml` carries the mutant replay separately, so
 # a red mark there reads as what it is: not broken code, but a test that has
 # stopped being able to fail.
@@ -30,3 +31,57 @@ jobs:
       # CONFORMANCE.md must already be what the model generates (R1); this
       # also fails if `write` would change anything.
       - run: cabal run mp-gate -- write && git diff --exit-code CONFORMANCE.md
+
+  formal:
+    name: Agda proofs
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      # Agda 2.6.3, the Ubuntu 24.04 package: the version the proofs are
+      # written against. No standard library is used or installed.
+      - run: sudo apt-get update && sudo apt-get install -y agda-bin
+      - run: agda --version
+      - run: agda --no-libraries -i formal formal/Everything.agda
+        env:
+          LC_ALL: C.UTF-8
+
+  liquid:
+    name: Liquid Haskell
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: haskell-actions/setup@v2
+        with:
+          ghc-version: "9.10.1"
+          cabal-version: "3.12.1.0"
+      # Z3 4.8.12, the Ubuntu 24.04 package, is the solver the refinements
+      # were checked with.
+      - run: sudo apt-get update && sudo apt-get install -y z3
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cabal/store
+            liquid/dist-newstyle
+          key: ${{ runner.os }}-liquid-${{ hashFiles('liquid/cabal.project', 'liquid/*.cabal') }}
+      # This layer alone may reach Hackage; liquid/cabal.project pins its
+      # index-state.
+      - run: cabal update
+      - run: cabal build all
+        working-directory: liquid
+
+  dex:
+    name: Dex
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      # The first run builds LLVM 12's Dex from pinned sources and takes a
+      # long time; later runs reuse the toolchain while dex/build.sh is
+      # unchanged.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.stack
+            dex/.toolchain
+          key: ${{ runner.os }}-dex-${{ hashFiles('dex/build.sh') }}
+      - run: ./dex/build.sh
+      - run: ./dex/check.sh
