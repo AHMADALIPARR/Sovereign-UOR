@@ -6,8 +6,20 @@ name: dex-oracle
 on:
   push:
     branches: [main]
+    paths:
+      - "dex/**"
+      - ".github/workflows/dex-oracle.yml"
+      - "src/main/scala/uor/kernel/**"
+      - "montrepol_checked/packages/mp-linalg/**"
+      - "montrepol_checked/packages/mp-check/**"
   pull_request:
     branches: [main]
+    paths:
+      - "dex/**"
+      - ".github/workflows/dex-oracle.yml"
+      - "src/main/scala/uor/kernel/**"
+      - "montrepol_checked/packages/mp-linalg/**"
+      - "montrepol_checked/packages/mp-check/**"
   workflow_dispatch:
 
 concurrency:
@@ -120,7 +132,7 @@ jobs:
             /opt/dex-lang/.stack-work
           key: dex-${{ env.DEX_COMMIT }}-jammy-llvm12-v1-done
       - uses: actions/cache/save@v4
-        if: failure()
+        if: failure() || cancelled()
         with:
           path: |
             /opt/stack-root
