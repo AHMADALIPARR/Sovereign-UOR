@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+
 -- | The subset of TOML the model files use, parsed by hand.
 --
 -- Supported: comments, blank lines, top-level @key = value@, @[[name]]@
