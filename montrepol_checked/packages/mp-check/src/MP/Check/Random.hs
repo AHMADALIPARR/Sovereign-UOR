@@ -1,3 +1,7 @@
+-- SPDX-License-Identifier: AGPL-3.0-only
+-- Also licensed under the SnapKitty Opaque License (LicenseRef-SnapKitty-Opaque-1.0); see README.md.
+-- Copyright (C) 2026 Ahmad Parr
+
 -- | SplitMix64 (Steele, Lea, Flood 2014; the constants of Java's
 -- @SplittableRandom@), written out rather than imported so
 -- the harness has no dependency the gate would have to trust.

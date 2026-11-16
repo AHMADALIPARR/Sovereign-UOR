@@ -1,3 +1,7 @@
+-- SPDX-License-Identifier: AGPL-3.0-only
+-- Also licensed under the SnapKitty Opaque License (LicenseRef-SnapKitty-Opaque-1.0); see README.md.
+-- Copyright (C) 2026 Ahmad Parr
+
 -- The harness tests itself. A property runner that cannot fail is the most
 -- dangerous kind of vacuous gate, so CK-02 plants a false property and
 -- requires the runner to catch it.
