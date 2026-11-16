@@ -1,3 +1,7 @@
+-- SPDX-License-Identifier: AGPL-3.0-only
+-- Also licensed under the SnapKitty Opaque License (LicenseRef-SnapKitty-Opaque-1.0); see README.md.
+-- Copyright (C) 2026 Ahmad Parr
+
 -- | The rules R1-R6 (see VERIFICATION.md and AGENTS.md in montrepol/).
 module MP.Gate.Rules
   ( Rule(..)

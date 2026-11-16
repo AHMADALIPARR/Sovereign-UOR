@@ -1,3 +1,7 @@
+-- SPDX-License-Identifier: AGPL-3.0-only
+-- Also licensed under the SnapKitty Opaque License (LicenseRef-SnapKitty-Opaque-1.0); see README.md.
+-- Copyright (C) 2026 Ahmad Parr
+
 -- | Falsifiability of the gate. A gate that cannot fail reads as evidence
 -- and is worse than none, so each rule is shown firing on a planted defect,
 -- and firing alone: a defect must be reported under the rule it breaks.
