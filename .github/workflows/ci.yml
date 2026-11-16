@@ -1,4 +1,6 @@
 # The previous version is kept in docs/workflows-original/ci.yml.txt.
+# The montrepol jobs follow montrepol/.github/workflows/ci.yml, run from the
+# montrepol/ subdirectory.
 name: CI
 
 on:
@@ -102,79 +104,135 @@ jobs:
           retention-days: 14
 
   # ------------------------------------------------------------------
-  # montrepol_checked: Cabal build, test, gate (required)
-  # montrepol/ as committed does not compile; see docs/README-audit.md.
+  # montrepol: Cabal build, test, gate (required)
   # ------------------------------------------------------------------
-  cabal:
-    name: Cabal (montrepol_checked)
+  vv:
+    name: montrepol build, test, gate
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    defaults:
-      run:
-        working-directory: montrepol_checked
-    steps:
-      - uses: actions/checkout@v4
-      - uses: haskell-actions/setup@v2
-        with:
-          ghc-version: "9.10.1"
-          cabal-version: "3.12.1.0"
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cabal/store
-            montrepol_checked/dist-newstyle
-          key: ${{ runner.os }}-ghc-9.10.1-checked-${{ hashFiles('montrepol_checked/cabal.project', 'montrepol_checked/packages/*/*.cabal', 'montrepol_checked/packages/**/*.hs') }}
-          restore-keys: ${{ runner.os }}-ghc-9.10.1-checked-
-      - name: cabal update
-        run: cabal update
-      - name: cabal build all
-        run: cabal build all
-      - name: cabal test all
-        run: cabal test all --test-show-details=direct
-      - name: mp-gate (R1-R6, includes CONFORMANCE.md regeneration check)
-        run: cabal run mp-gate
-
-  # ------------------------------------------------------------------
-  # montrepol (original tree): informational only, expected to fail
-  # until the fixes in montrepol_checked/ are taken over.
-  # ------------------------------------------------------------------
-  cabal-original:
-    name: Cabal (montrepol, original, informational)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    continue-on-error: true
+    timeout-minutes: 40
     defaults:
       run:
         working-directory: montrepol
     steps:
       - uses: actions/checkout@v4
       - uses: haskell-actions/setup@v2
+        id: setup
         with:
           ghc-version: "9.10.1"
           cabal-version: "3.12.1.0"
-      - name: cabal update
-        run: cabal update
-      - name: cabal build all
-        run: cabal build all --keep-going
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ${{ steps.setup.outputs.cabal-store }}
+            montrepol/dist-newstyle
+          key: ${{ runner.os }}-ghc-9.10.1-montrepol-${{ hashFiles('montrepol/cabal.project', 'montrepol/packages/*/*.cabal') }}
+      # The project uses no package repository (active-repositories: :none),
+      # but cabal 3.12 still wants an index file to exist.
+      - run: cabal update
+      - run: cabal build all
+      - run: cabal test all --test-show-details=direct
+      - run: cabal run mp-gate
+      # CONFORMANCE.md must already be what the model generates (R1); this
+      # also fails if `write` would change anything.
+      - run: cabal run mp-gate -- write && git diff --exit-code CONFORMANCE.md
 
   # ------------------------------------------------------------------
-  # Final gate (Scala + Cabal required)
+  # montrepol: Agda proofs (required)
+  # ------------------------------------------------------------------
+  formal:
+    name: montrepol Agda proofs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: montrepol
+    steps:
+      - uses: actions/checkout@v4
+      # Agda 2.6.3, the Ubuntu 24.04 package. No standard library is used.
+      - run: sudo apt-get update && sudo apt-get install -y agda-bin
+      - run: agda --version
+      - run: agda --no-libraries -i formal formal/Everything.agda
+        env:
+          LC_ALL: C.UTF-8
+
+  # ------------------------------------------------------------------
+  # montrepol: Liquid Haskell with Z3 (required)
+  # ------------------------------------------------------------------
+  liquid:
+    name: montrepol Liquid Haskell
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: montrepol
+    steps:
+      - uses: actions/checkout@v4
+      - uses: haskell-actions/setup@v2
+        id: setup
+        with:
+          ghc-version: "9.10.1"
+          cabal-version: "3.12.1.0"
+      # Z3 4.8.12, the Ubuntu 24.04 package.
+      - run: sudo apt-get update && sudo apt-get install -y z3
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ${{ steps.setup.outputs.cabal-store }}
+            montrepol/liquid/dist-newstyle
+          key: ${{ runner.os }}-liquid-${{ hashFiles('montrepol/liquid/cabal.project', 'montrepol/liquid/*.cabal') }}
+      # This layer alone reaches Hackage; liquid/cabal.project pins its
+      # index-state.
+      - run: cabal update
+      - run: cabal build all
+        working-directory: montrepol/liquid
+
+  # ------------------------------------------------------------------
+  # montrepol: Dex quine checks (non-blocking until proven on CI)
+  # ------------------------------------------------------------------
+  dex:
+    name: montrepol Dex
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: montrepol
+    steps:
+      - uses: actions/checkout@v4
+      # The first run builds LLVM 12's Dex from pinned sources and takes a
+      # long time; later runs reuse the toolchain while dex/build.sh is
+      # unchanged.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.stack
+            montrepol/dex/.toolchain
+          key: ${{ runner.os }}-dex-${{ hashFiles('montrepol/dex/build.sh') }}
+      - run: ./dex/build.sh
+      - run: ./dex/check.sh
+
+  # ------------------------------------------------------------------
+  # Final gate (Scala + montrepol required)
   # ------------------------------------------------------------------
   status:
     name: CI Status
     runs-on: ubuntu-latest
-    needs: [scala-test, cabal]
+    needs: [scala-test, vv, formal, liquid]
     if: always()
     steps:
       - name: Aggregate
         run: |
           echo "Scala tests → ${{ needs.scala-test.result }}"
-          echo "Cabal (montrepol_checked) → ${{ needs.cabal.result }}"
+          echo "montrepol build, test, gate → ${{ needs.vv.result }}"
+          echo "montrepol Agda proofs → ${{ needs.formal.result }}"
+          echo "montrepol Liquid Haskell → ${{ needs.liquid.result }}"
           fail=0
           [[ "${{ needs.scala-test.result }}" == success ]] || fail=1
-          [[ "${{ needs.cabal.result }}" == success ]] || fail=1
+          [[ "${{ needs.vv.result }}" == success ]] || fail=1
+          [[ "${{ needs.formal.result }}" == success ]] || fail=1
+          [[ "${{ needs.liquid.result }}" == success ]] || fail=1
           if [[ $fail -ne 0 ]]; then
-            echo "❌ Scala or Cabal job failed"
+            echo "❌ a required job failed"
             exit 1
           fi
-          echo "✅ Scala and Cabal passed"
+          echo "✅ Scala and montrepol passed"
