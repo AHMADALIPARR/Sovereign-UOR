@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+
 -- One build for the whole monorepo.
 --
 -- Every package depends only on GHC boot packages and on each other. That is a
@@ -10,6 +12,8 @@ packages:
   packages/mp-lie
   packages/mp-seq
   packages/mp-analytic
+  packages/mp-hcalc
+  packages/mp-lambda
   packages/mp-gate
 
 with-compiler: ghc-9.10.1
