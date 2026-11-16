@@ -1,0 +1,84 @@
+'# Determinant dual oracle, Dex side
+
+'Leibniz expansion of the determinant, the definition itself: a sum over all
+permutations with their signs. montrepol_checked computes the same values by
+Bareiss elimination (MP.Matrix.det, driven by dex/haskell/BareissVectors.hs);
+CI diffs the two outputs. An n x n matrix (n <= 6) is embedded in a 6 x 6
+matrix with an identity block, which leaves the determinant unchanged.
+
+'## SplitMix64
+
+'`rem` on Word64 is a signed remainder in this Dex version (checked:
+`rem` of 0xdc336acab085b9ce by 4 gives 0xfffffffffffffffe), so the unsigned
+remainder is built from 32-bit halves, where signed and unsigned agree.
+`.>>.` on Word64 is a logical shift (checked: 0xffffffff00000000 .>>. 30
+gives 0x3fffffffc).
+
+def w64(hi:Word64, lo:Word64) -> Word64 = (hi .<<. 32) .|. lo
+
+# Unsigned remainder for 0 < m < 2^31.
+def urem(x:Word64, m:Word64) -> Word64 =
+  hi = x .>>. 32
+  lo = x .&. 4294967295
+  rem(rem(hi, m) * rem(w64(1, 0), m) + rem(lo, m), m)
+
+gamma = w64(2654435769, 2135587861)
+mix1 = w64(3210233709, 484763065)
+mix2 = w64(2496678331, 321982955)
+seed : Word64 = 24301
+
+def mix(s:Word64) -> Word64 =
+  z1 = (s .^. (s .>>. 30)) * mix1
+  z2 = (z1 .^. (z1 .>>. 27)) * mix2
+  z2 .^. (z2 .>>. 31)
+
+# Output number k (0-based) of the generator started at seed.
+def draw(k:Word64) -> Word64 = mix(seed + (k + 1) * gamma)
+
+'## Matrices
+
+Mat = Fin 6 => Fin 6 => Int64
+
+# A random matrix starting at draw number base: n = 1 + w mod 6, then n*n
+# entries in row-major order, each (w mod 41) - 20.
+# Returns the number of draws used, n, and the 6 x 6 embedding.
+def mat_at(base:Word64) -> (Word64, Nat, Mat) =
+  n = urem(draw(base), 6) + 1
+  nn = w64_to_n(n)
+  a = for i:(Fin 6). for j:(Fin 6).
+    ii = ordinal(i)
+    jj = ordinal(j)
+    if (ii < nn) && (jj < nn)
+      then
+        w = draw(base + n_to_w64(ii * nn + jj) + 1)
+        internal_cast(to=Int64, urem(w, 41)) - 20
+      else if ii == jj then 1 else 0
+  (n * n + 1, nn, a)
+
+pow6 : Fin 6 => Nat = [1, 6, 36, 216, 1296, 7776]
+
+# Sum over all 6^6 maps p : Fin 6 -> Fin 6, keeping the bijections, each with
+# sign (-1)^(number of inversions).
+def leibniz(a:Mat) -> Int64 =
+  sum for k:(Fin 46656).
+    p = for i:(Fin 6). rem(idiv(ordinal(k), pow6[i]), 6)
+    bijective = all for i:(Fin 6). all for j:(Fin 6).
+      (ordinal(i) >= ordinal(j)) || not(p[i] == p[j])
+    if bijective
+      then
+        inversions = sum for i:(Fin 6). sum for j:(Fin 6).
+          if (ordinal(i) < ordinal(j)) && (p[i] > p[j]) then 1 else (0 :: Nat)
+        sign : Int64 = if rem(inversions, 2) == 0 then 1 else -1
+        sign * prod(for i:(Fin 6). a[i][from_ordinal(p[i])])
+      else 0
+
+'## Driver: 200 cases
+
+unsafe_io \.
+  with_state (0 :: Word64) \pos.
+    for c:(Fin 200).
+      base = get(pos)
+      (used, n, a) = mat_at(base)
+      pos := base + used
+      print("case " <> show(ordinal(c)) <> " n " <> show(n) <> " det " <> show(leibniz(a)))
+  ()
