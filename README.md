@@ -86,13 +86,13 @@ Dex oracle: see [docs/dex-oracle.md](docs/dex-oracle.md) for building Dex
 
 | Document | Contents |
 |---|---|
+| [docs/REPO.md](docs/REPO.md) | The whole repository, file by file: what each file does, with line references and measured results |
 | [docs/README-audit.md](docs/README-audit.md) | Every claim of the old README checked against the code; truncation, fabrication, test and mutant audit |
 | [docs/dex-oracle.md](docs/dex-oracle.md) | What the Dex programs compute, how they are compared, measured agreement |
 | [docs/README-original.md](docs/README-original.md) | The README as it was at commit `5db9b38` |
 | [docs/workflows-original/](docs/workflows-original/) | The workflows as they were before the CI fix |
 
-Per-file documents live under `docs/files/`, at the same path as the file
-they describe. Written so far:
+One earlier per-file document also exists:
 
 | File | Document |
 |---|---|
