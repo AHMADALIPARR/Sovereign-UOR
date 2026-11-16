@@ -1,103 +1,250 @@
+{-# LANGUAGE DataKinds #-}
+
 module Main (main) where
 
+import Data.Proxy (Proxy (..))
+import Data.Ratio ((%))
+import GHC.TypeNats (KnownNat)
 import MP.Algebra
 import MP.Check
 import MP.Matrix
 import MP.Participation
+import Numeric.Natural (Natural)
 
 main :: IO ()
 main =
   runSuite
     "mp-linalg"
-    [ prop "LA-01" "Integer is a semiring" (triple integerG) (axioms @Integer)
-    , prop "LA-01" "Rational is a semiring" (triple rationalG) (axioms @Rational)
-    , prop "LA-01" "GF2 is a semiring" (triple gf2G) (axioms @GF2)
-    , prop "LA-01" "MinPlus is a semiring" (triple minPlusG) (axioms @MinPlus)
-    , prop "LA-02" "mul is associative" (threeMats) assoc
-    , prop "LA-02" "mul distributes over addition" (twoMats) dist
-    , prop "LA-02" "identity is a unit" (oneMat) unitI
-    , prop "LA-03" "Strassen equals the definition" (twoMats) strassenEq
-    , prop "LA-04" "Bareiss equals Leibniz" (square) bareissEq
-    , unit "LA-04" "a matrix needing a pivot swap" $ det (fromLists [[0, 1], [1, 0]] :: Matrix Integer) === (-1)
-    , prop "LA-05" "inverse multiplies back" (nonsing) invRound
-    , unit "LA-05" "a singular matrix has no inverse" $ inverse (fromLists [[1, 2], [2, 4]] :: Matrix Rational) === Nothing
-    , prop "LA-06" "rank equals nonzero rows of echelon" (rect) rankEq
-    , prop "LA-07" "participation ratio bounds" (probVec) partBounds
-    , unit "LA-07" "uniform has full participation" $ participation (replicate 5 (1 % 5)) === 5
+    [ prop "LA-01" "semiring axioms hold for Integer" (triple (integerIn (-50) 50)) semiringLaws
+    , prop "LA-01" "semiring axioms hold for Rational" (triple (rationalIn (-20) 20 9)) semiringLaws
+    , prop "LA-01" "semiring axioms hold for GF2" (triple gf2) semiringLaws
+    , prop "LA-01" "semiring axioms hold for MinPlus" (triple minPlus) semiringLaws
+    , prop "LA-02" "multiplication is associative, distributive, unital" genAssoc assocLaws
+    , propN "LA-03" "Strassen equals the definition over Integer" 120 (genPair (integerIn (-9) 9) 20) strassenAgrees
+    , propN "LA-03" "Strassen equals the definition over Rational" 60 (genPair (rationalIn (-5) 5 4) 12) strassenAgrees
+    , propN "LA-03" "Strassen equals the definition over GF2" 120 (genPair gf2 20) strassenAgrees
+    , prop "LA-04" "Bareiss equals the Leibniz expansion over Integer" (genSquare 6 (integerIn (-20) 20)) bareissAgrees
+    , prop "LA-04" "Bareiss equals the Leibniz expansion over GF2" (genSquare 6 gf2) bareissAgrees
+    , unit "LA-04" "Bareiss on a matrix needing a row swap" $
+        withSquare [[0, 1, 2], [3, 0, 4], [5, 6, 0 :: Integer]] (\a -> det a === 56 .&&. detLeibniz a === 56)
+    , prop "LA-05" "det is multiplicative and transpose-invariant" genDetPair detLaws
+    , prop "LA-06" "inverse exists exactly when det /= 0, and inverts" (genSquare 5 (rationalIn (-3) 3 2)) inverseLaws
+    , prop "LA-06" "rank A = rank A^T, and rank = n exactly when det /= 0" (genSquare 5 (integerIn (-2) 2)) rankLaws
+    , propN "LA-07" "min-plus matrix powers compute shortest paths" 150 genGraph shortestPaths
+    , prop "LA-08" "Kish k_eff is the participation ratio of diag(w)" (listUpTo 8 (integerIn 0 1000)) kishIsPR
+    , unit "LA-08" "Kish k_eff of [2^32, 2^32] is exactly 2 (no saturation)" $
+        let w = [2 ^ (32 :: Int), 2 ^ (32 :: Int)]
+         in kishEffective w === Just 2
+              .&&. assert "accepted k_eff >= 3" (not (kishAtLeast 3 w))
+              .&&. assert "rejected k_eff >= 2" (kishAtLeast 2 w)
+    , prop "LA-09" "1 <= PR(A^T A) <= rank(A^T A)" (genRect 6 6 (integerIn (-4) 4)) prBounds
+    , prop "LA-10" "2x2 symmetric: tr(G^2) = tr^2 - 2 det, and PR = 2 iff G = cI" genSym2 sym2Laws
     ]
+
+------------------------------------------------------------------------------
+-- Generators
+
+gf2 :: Gen GF2
+gf2 = GF2 <$> boolG
+
+minPlus :: Gen MinPlus
+minPlus = do
+  inf <- intIn 0 4
+  v <- integerIn 0 30
+  pure (MinPlus (if inf == 0 then Nothing else Just v))
+
+triple :: Gen a -> Gen (a, a, a)
+triple g = (,,) <$> g <*> g <*> g
+
+grid :: Int -> Int -> Gen a -> Gen [[a]]
+grid r c g = listOfLength r (listOfLength c g)
+
+genRect :: Int -> Int -> Gen a -> Gen [[a]]
+genRect mr mc g = do
+  r <- intIn 1 mr
+  c <- intIn 1 mc
+  grid r c g
+
+genSquare :: Int -> Gen a -> Gen [[a]]
+genSquare mn g = intIn 1 mn >>= \n -> grid n n g
+
+genPair :: Gen a -> Int -> Gen ([[a]], [[a]], Int)
+genPair g mx = do
+  r <- intIn 1 mx
+  k <- intIn 1 mx
+  c <- intIn 1 mx
+  cutoff <- elements 1 [2, 4]
+  (,,) <$> grid r k g <*> grid k c g <*> pure cutoff
+
+genAssoc :: Gen ([[Integer]], [[Integer]], [[Integer]], [[Integer]])
+genAssoc = do
+  p <- intIn 1 6
+  q <- intIn 1 6
+  r <- intIn 1 6
+  s <- intIn 1 6
+  let e = integerIn (-9) 9
+  (,,,) <$> grid p q e <*> grid q r e <*> grid r s e <*> grid q r e
+
+genDetPair :: Gen ([[Integer]], [[Integer]])
+genDetPair = do
+  n <- intIn 1 6
+  (,) <$> grid n n (integerIn (-9) 9) <*> grid n n (integerIn (-9) 9)
+
+-- | A weighted digraph as an adjacency matrix; Nothing is "no edge".
+genGraph :: Gen [[Maybe Integer]]
+genGraph = do
+  n <- intIn 1 7
+  grid n n $ do
+    e <- intIn 0 2
+    w <- integerIn 0 20
+    pure (if e == 0 then Nothing else Just w)
+
+genSym2 :: Gen (Integer, Integer, Integer)
+genSym2 = (,,) <$> integerIn (-6) 6 <*> integerIn (-6) 6 <*> integerIn (-6) 6
+
+------------------------------------------------------------------------------
+-- Bringing runtime shapes into the type
+
+withSquare :: forall a. [[a]] -> (forall n. KnownNat n => Matrix n n a -> Result) -> Result
+withSquare xss k = withSize (fromIntegral (length xss)) $ \(_ :: Proxy n) ->
+  maybe (failWith "not square") k (fromLists xss :: Maybe (Matrix n n a))
+
+withRect :: forall a. [[a]] -> (forall m n. (KnownNat m, KnownNat n) => Matrix m n a -> Result) -> Result
+withRect xss k =
+  withSize (fromIntegral (length xss)) $ \(_ :: Proxy m) ->
+    withSize (fromIntegral (maybe 0 length (firstRow xss))) $ \(_ :: Proxy n) ->
+      maybe (failWith "ragged") k (fromLists xss :: Maybe (Matrix m n a))
   where
-    integerG = integerIn (-20) 20
-    rationalG = rationalIn (-10) 10 5
-    gf2G = GF2 <$> boolG
-    minPlusG = elements Inf [Fin n | n <- [-5 .. 5]]
-    triple g = (,,) <$> g <*> g <*> g
-    mat m n g = fromLists <$> listOfLength m (listOfLength n g)
-    oneMat = mat 4 4 integerG
-    twoMats = (,) <$> mat 4 5 integerG <*> mat 5 3 integerG
-    threeMats = (,,) <$> mat 3 4 integerG <*> mat 4 2 integerG <*> mat 2 5 integerG
-    square = mat 4 4 integerG
-    nonsing = do
-      a <- mat 3 3 rationalG
-      pure a
-    rect = mat 5 4 integerG
-    probVec = do
-      xs <- listOfLength 6 (integerIn 0 10)
-      let s = sum xs
-       in pure (if s == 0 then replicate 6 (1 % 6) else map (% s) xs)
+    firstRow (r : _) = Just r
+    firstRow [] = Nothing
 
-axioms :: (Semiring a, Eq a, Show a) => (a, a, a) -> Result
-axioms (x, y, z) =
-  assert "assoc +" ((x .+. y) .+. z == x .+. (y .+. z))
-    .&&. assert "comm +" (x .+. y == y .+. x)
-    .&&. assert "zero" (x .+. zero == x)
-    .&&. assert "assoc *" ((x .*. y) .*. z == x .*. (y .*. z))
-    .&&. assert "one" (x .*. one == x)
-    .&&. assert "dist" (x .*. (y .+. z) == (x .*. y) .+. (x .*. z))
+------------------------------------------------------------------------------
+-- Properties
 
-assoc :: (Matrix Integer, Matrix Integer, Matrix Integer) -> Result
-assoc (a, b, c) = mul (mul a b) c === mul a (mul b c)
+semiringLaws :: (Semiring a, Eq a, Show a) => (a, a, a) -> Result
+semiringLaws (a, b, c) =
+  allOf
+    [ (a .+. b) .+. c === a .+. (b .+. c)
+    , a .+. b === b .+. a
+    , a .+. zero === a
+    , (a .*. b) .*. c === a .*. (b .*. c)
+    , a .*. one === a
+    , one .*. a === a
+    , a .*. (b .+. c) === (a .*. b) .+. (a .*. c)
+    , (a .+. b) .*. c === (a .*. c) .+. (b .*. c)
+    , a .*. zero === zero
+    , zero .*. a === zero
+    ]
 
-dist :: (Matrix Integer, Matrix Integer) -> Result
-dist (a, b) = mul a (add b b) === add (mul a b) (mul a b)
-  where
-    add x y = fromLists (zipWith (zipWith (.+.)) (toLists x) (toLists y))
+assocLaws :: ([[Integer]], [[Integer]], [[Integer]], [[Integer]]) -> Result
+assocLaws (xa, xb, xc, xb') =
+  withRect xa $ \(a :: Matrix p q Integer) ->
+    withRect xc $ \(c :: Matrix r s Integer) ->
+      case (fromLists xb :: Maybe (Matrix q r Integer), fromLists xb' :: Maybe (Matrix q r Integer)) of
+        (Just b, Just b') ->
+          allOf
+            [ mul (mul a b) c === mul a (mul b c)
+            , mul a (add b b') === add (mul a b) (mul a b')
+            , mul identity a === a
+            , mul a identity === a
+            ]
+        _ -> failWith "inner dimensions did not line up"
 
-unitI :: Matrix Integer -> Result
-unitI a = mul a (identity (cols a)) === a .&&. mul (identity (rows a)) a === a
+strassenAgrees :: forall a. (Ring a, Eq a, Show a) => ([[a]], [[a]], Int) -> Result
+strassenAgrees (xa, xb, cutoff) =
+  withRect xa $ \(a :: Matrix m k a) ->
+    withSize (fromIntegral (maybe 0 length (case xb of r : _ -> Just r; [] -> Nothing))) $ \(_ :: Proxy n) ->
+      case fromLists xb :: Maybe (Matrix k n a) of
+        Just b -> mulStrassen cutoff a b === mul a b
+        Nothing -> failWith "inner dimensions did not line up"
 
-strassenEq :: (Matrix Integer, Matrix Integer) -> Result
-strassenEq (a, b) = strassen 2 a b === mul a b
+bareissAgrees :: (Domain a, Eq a, Show a) => [[a]] -> Result
+bareissAgrees xs = withSquare xs (\a -> det a === detLeibniz a)
 
-bareissEq :: Matrix Integer -> Result
-bareissEq a = det a === leibniz a
+detLaws :: ([[Integer]], [[Integer]]) -> Result
+detLaws (xa, xb) =
+  withSquare xa $ \(a :: Matrix n n Integer) ->
+    case fromLists xb :: Maybe (Matrix n n Integer) of
+      Just b -> det (mul a b) === det a * det b .&&. det (transpose a) === det a
+      Nothing -> failWith "sizes differ"
 
-leibniz :: Matrix Integer -> Integer
-leibniz a =
+inverseLaws :: [[Rational]] -> Result
+inverseLaws xs = withSquare xs $ \a -> case inverse a of
+  Nothing -> det a === 0
+  Just ai -> allOf [det a =/= 0, mul a ai === identity, mul ai a === identity]
+
+rankLaws :: [[Integer]] -> Result
+rankLaws xs = withSquare (map (map fromInteger) xs) $ \(a :: Matrix n n Rational) ->
+  rank a === rank (transpose a) .&&. (rank a == rows a) === (det a /= 0)
+
+shortestPaths :: [[Maybe Integer]] -> Result
+shortestPaths adj = withSquare (map (map MinPlus) adj) $ \a ->
   let n = rows a
-      perms = permutations [0 .. n - 1]
-      sign p = if even (inversions p) then 1 else -1
-      inversions p = length [(i, j) | i <- [0 .. n - 1], j <- [i + 1 .. n - 1], p !! i > p !! j]
-   in sum [sign p * product [entry a i (p !! i) | i <- [0 .. n - 1]] | p <- perms]
+      withLoops = add identity a -- distance 0 from a vertex to itself
+      viaPowers = power withLoops (fromIntegral (max 0 (n - 1)))
+   in map (map (\(MinPlus d) -> d)) (toLists viaPowers) === floydWarshall adj
 
-permutations :: [a] -> [[a]]
-permutations [] = [[]]
-permutations xs = [y : zs | (y, ys) <- picks xs, zs <- permutations ys]
+-- | Floyd–Warshall written independently of the matrix code.
+floydWarshall :: [[Maybe Integer]] -> [[Maybe Integer]]
+floydWarshall adj = foldl relax start [0 .. n - 1]
   where
-    picks [] = []
-    picks (z : zs) = (z, zs) : [(y, z : ys) | (y, ys) <- picks zs]
+    n = length adj
+    start = [[if i == j then Just 0 else w | (j, w) <- zip [0 ..] row] | (i, row) <- zip [0 :: Int ..] adj]
+    relax d k =
+      [ [best (cell d i j) ((+) <$> cell d i k <*> cell d k j) | j <- [0 .. n - 1]]
+      | i <- [0 .. n - 1]
+      ]
+    cell d i j = case drop j <$> safeIx i d of
+      Just (v : _) -> v
+      _ -> Nothing
+    safeIx i d = case drop i d of
+      (r : _) -> Just r
+      [] -> Nothing
+    best Nothing y = y
+    best x Nothing = x
+    best (Just x) (Just y) = Just (min x y)
 
-invRound :: Matrix Rational -> Result
-invRound a =
-  case inverse a of
-    Nothing -> pass -- singular is allowed
-    Just b -> mul a b === identity (rows a)
+kishIsPR :: [Integer] -> Result
+kishIsPR ws0 =
+  let ws = map fromInteger ws0 :: [Natural]
+      nonZero = length (filter (/= 0) ws)
+   in withSize (fromIntegral (length ws)) $ \(_ :: Proxy n) ->
+        let d = diagonal (\i -> fromIntegral (sum (take 1 (drop i ws)))) :: Matrix n n Rational
+         in case kishEffective ws of
+              Nothing -> assert "zero weights but PR defined" (participationRatio d == Nothing)
+              Just k ->
+                allOf
+                  [ participationRatio d === Just k
+                  , assert "k_eff < 1" (k >= 1)
+                  , assert "k_eff exceeds the number of non-zero weights" (k <= fromIntegral nonZero)
+                  ]
 
-rankEq :: Matrix Integer -> Result
-rankEq a = rank a === length [row | row <- toLists (echelon a), any (not . isZero) row]
-  where
-    echelon = id -- the rank function already computes it; this is the definition
+prBounds :: [[Integer]] -> Result
+prBounds xs = withRect (map (map fromInteger) xs) $ \(a :: Matrix m n Rational) ->
+  let g = mul (transpose a) a
+   in case participationRatio g of
+        Nothing -> assert "PR undefined but A /= 0" (all (all (== 0)) xs)
+        Just pr ->
+          allOf
+            [ assert ("PR < 1: " <> show pr) (pr >= 1)
+            , assert ("PR > rank: " <> show pr) (pr <= fromIntegral (rank g))
+            , frobeniusSq g === trace (mul g g)
+            ]
 
-partBounds :: [Rational] -> Result
-partBounds p =
-  let k = participation p
-   in assert "below 1" (k >= 1) .&&. assert "above length" (k <= fromIntegral (length p))
+sym2Laws :: (Integer, Integer, Integer) -> Result
+sym2Laws (p, q, r) =
+  -- G = B^T B for B = [[p, q], [0, r]] is positive semi-definite.
+  withSquare [[p % 1, q % 1], [0, r % 1]] $ \b ->
+    let g = mul (transpose b) b
+        t = trace g
+        scalar = case toLists g of
+          [[g11, g12], [g21, g22]] -> g11 == g22 && g12 == 0 && g21 == 0
+          _ -> False
+     in allOf
+          [ trace (mul g g) === t * t - 2 * det g
+          , case participationRatio g of
+              Nothing -> pass
+              Just pr ->
+                assert "PR outside [1, 2]" (pr >= 1 && pr <= 2)
+                  .&&. (pr == 2) === scalar
+          ]

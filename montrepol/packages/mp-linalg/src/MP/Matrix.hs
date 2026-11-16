@@ -1,188 +1,304 @@
--- | Matrices with dimensions in the type, over a semiring.
+{-# LANGUAGE DataKinds #-}
+
+-- | Dense matrices with their dimensions in the type.
 --
--- The product is the definition: the (i, j) entry is the sum of the products
--- of the i-th row and the j-th column. Strassen is a second implementation of
--- the same product, checked against the definition (LA-03). Bareiss is the
--- integer-preserving elimination for the determinant (LA-04).
+-- @Matrix m n a@ has @m@ rows and @n@ columns. Multiplication is
+-- @Matrix m k a -> Matrix k n a -> Matrix m n a@, so a dimension mismatch is a
+-- type error rather than a runtime check. The only partial operation in this
+-- module is array indexing, and every index used is derived from the same
+-- dimensions the array was built with.
 module MP.Matrix
   ( Matrix
+    -- * Construction
+  , fromLists
+  , generate
+  , identity
+  , zeroMatrix
+  , diagonal
+  , toLists
   , rows
   , cols
   , entry
-  , fromLists
-  , toLists
-  , identity
+  , withSize
+    -- * Arithmetic
+  , add
+  , sub
+  , negateM
+  , scale
+  , transpose
   , mul
-  , strassen
+  , mulStrassen
+  , power
+  , trace
+    -- * Determinants, rank, inverse
   , det
+  , detLeibniz
   , rank
   , inverse
   ) where
 
+import Data.Array (Array, listArray, (!))
+import Data.Proxy (Proxy (..))
+import GHC.TypeNats (KnownNat, Nat, SomeNat (..), natVal, someNatVal)
 import MP.Algebra
-import Data.Array (Array, array, (!), bounds, elems)
+import Numeric.Natural (Natural)
 
--- | A matrix of m rows and n columns. The dimensions are phantom so a product
--- of the wrong shapes is a type error, and a runtime check remains for the
--- constructors that take lists.
-data Matrix a = Matrix Int Int (Array (Int, Int) a)
+------------------------------------------------------------------------------
+-- Representation
 
-rows, cols :: Matrix a -> Int
-rows (Matrix m _ _) = m
-cols (Matrix _ n _) = n
+-- | Row-major storage. The two 'Int's are the dimensions from the type, cached.
+data Raw a = Raw !Int !Int !(Array Int a)
 
-entry :: Matrix a -> Int -> Int -> a
-entry (Matrix _ _ a) i j = a ! (i, j)
+newtype Matrix (m :: Nat) (n :: Nat) a = Matrix (Raw a)
 
-fromLists :: Semiring a => [[a]] -> Matrix a
-fromLists [] = Matrix 0 0 (array ((0, 0), (-1, -1)) [])
-fromLists (r : rs) =
-  let n = length r
-      m = 1 + length rs
-      check [] = True
-      check (s : ss) = length s == n && check ss
-   in if not (check rs)
-        then error "fromLists: ragged"
-        else
-          let pairs = [((i, j), x) | (i, row) <- zip [0 ..] (r : rs), (j, x) <- zip [0 ..] row]
-           in Matrix m n (array ((0, 0), (m - 1, n - 1)) pairs)
+instance Eq a => Eq (Matrix m n a) where
+  x == y = toLists x == toLists y
 
-toLists :: Matrix a -> [[a]]
-toLists (Matrix m n a) = [[a ! (i, j) | j <- [0 .. n - 1]] | i <- [0 .. m - 1]]
+instance Show a => Show (Matrix m n a) where
+  show = show . toLists
 
-identity :: Semiring a => Int -> Matrix a
-identity k =
-  Matrix k k (array ((0, 0), (k - 1, k - 1)) [((i, j), if i == j then one else zero) | i <- [0 .. k - 1], j <- [0 .. k - 1]])
+rawGen :: Int -> Int -> (Int -> Int -> a) -> Raw a
+rawGen r c f =
+  Raw r c (listArray (0, r * c - 1) [f i j | i <- [0 .. r - 1], j <- [0 .. c - 1]])
 
--- | The definition of the product.
-mul :: Semiring a => Matrix a -> Matrix a -> Matrix a
-mul x y
-  | cols x /= rows y = error "mul: shape"
-  | otherwise =
-      let m = rows x
-          n = cols y
-          p = cols x
-          pairs = [((i, j), sumS [entry x i k .*. entry y k j | k <- [0 .. p - 1]]) | i <- [0 .. m - 1], j <- [0 .. n - 1]]
-       in Matrix m n (array ((0, 0), (m - 1, n - 1)) pairs)
+at :: Raw a -> Int -> Int -> a
+at (Raw _ c arr) i j = arr ! (i * c + j)
 
--- | Strassen, with a cutoff. Below the cutoff it is the definition.
-strassen :: Semiring a => Int -> Matrix a -> Matrix a -> Matrix a
-strassen cutoff x y
-  | cols x /= rows y = error "strassen: shape"
-  | rows x < cutoff || cols x < cutoff || cols y < cutoff = mul x y
-  | otherwise = strassen' cutoff x y
+rawLists :: Raw a -> [[a]]
+rawLists raw@(Raw r c _) = [[at raw i j | j <- [0 .. c - 1]] | i <- [0 .. r - 1]]
 
-strassen' :: Semiring a => Int -> Matrix a -> Matrix a -> Matrix a
-strassen' cutoff x y =
-  let m = rows x
-      -- Pad to even if needed. The extra row and column are zero.
-      pad k a = if k `mod` 2 == 0 then a else fromLists (toLists a ++ [replicate (cols a) zero])
-      x' = pad m x
-      y' = pad (cols y) y
-      h = rows x' `div` 2
-      -- Split into quadrants.
-      quad a i j = fromLists [[entry a (i * h + r) (j * h + c) | c <- [0 .. h - 1]] | r <- [0 .. h - 1]]
-      a11 = quad x' 0 0; a12 = quad x' 0 1; a21 = quad x' 1 0; a22 = quad x' 1 1
-      b11 = quad y' 0 0; b12 = quad y' 0 1; b21 = quad y' 1 0; b22 = quad y' 1 1
-      m1 = strassen cutoff (a11 .+. a22) (b11 .+. b22)
-      m2 = strassen cutoff (a21 .+. a22) b11
-      m3 = strassen cutoff a11 (b12 .-. b22)
-      m4 = strassen cutoff a22 (b21 .-. b11)
-      m5 = strassen cutoff (a11 .+. a12) b22
-      m6 = strassen cutoff (a21 .-. a11) (b11 .+. b12)
-      m7 = strassen cutoff (a12 .-. a22) (b21 .+. b22)
-      c11 = m1 .+. m4 .-. m5 .+. m7
-      c12 = m3 .+. m5
-      c21 = m2 .+. m4
-      c22 = m1 .-. m2 .+. m3 .+. m6
-      -- Stitch the quadrants back, dropping any padding.
-      stitch = fromLists [row | r <- [0 .. rows x - 1], let row = [if c < cols y then entry (if r < h then if c < h then c11 else c12 else if c < h then c21 else c22) (r `mod` h) (c `mod` h) else zero | c <- [0 .. cols y - 1]]]
-   in stitch
+dimOf :: forall k. KnownNat k => Proxy k -> Int
+dimOf p = fromIntegral (natVal p)
 
--- | Bareiss determinant, integer-preserving. For a field it is ordinary
--- elimination. The pivot search is the only partial step; a singular matrix
--- returns zero.
-det :: (Ring a, Eq a) => Matrix a -> a
-det a
-  | rows a /= cols a = error "det: not square"
-  | otherwise = bareiss a
+------------------------------------------------------------------------------
+-- Construction
 
-bareiss :: (Ring a, Eq a) => Matrix a -> a
-bareiss a0 =
-  let n = rows a0
-      go k a prev
-        | k >= n = entry a (n - 1) (n - 1)
-        | otherwise =
-            case findPivot k a of
-              Nothing -> zero
-              Just p ->
-                let a' = if p == k then a else swapRows k p a
-                    piv = entry a' k k
-                    a'' = eliminate k piv prev a'
-                 in go (k + 1) a'' piv
-   in go 0 a0 one
-
-findPivot :: (Eq a, Semiring a) => Int -> Matrix a -> Maybe Int
-findPivot k a =
-  case [i | i <- [k .. rows a - 1], not (isZero (entry a i k))] of
-    [] -> Nothing
-    (i : _) -> Just i
-
-swapRows :: Int -> Int -> Matrix a -> Matrix a
-swapRows r s a
-  | r == s = a
-  | otherwise =
-      let pairs = [((i, j), if i == r then entry a s j else if i == s then entry a r j else entry a i j) | i <- [0 .. rows a - 1], j <- [0 .. cols a - 1]]
-       in Matrix (rows a) (cols a) (array ((0, 0), (rows a - 1, cols a - 1)) pairs)
-
-eliminate :: (Ring a, Eq a) => Int -> a -> a -> Matrix a -> Matrix a
-eliminate k piv prev a =
-  let pairs =
-        [((i, j), if i <= k then entry a i j else (piv .*. entry a i j .-. entry a i k .*. entry a k j) ./. prev) | i <- [0 .. rows a - 1], j <- [0 .. cols a - 1]]
-   in Matrix (rows a) (cols a) (array ((0, 0), (rows a - 1, cols a - 1)) pairs)
+-- | 'Nothing' unless the list has exactly @m@ rows of exactly @n@ entries.
+fromLists :: forall m n a. (KnownNat m, KnownNat n) => [[a]] -> Maybe (Matrix m n a)
+fromLists xss
+  | length xss == r && all ((== c) . length) xss =
+      Just (Matrix (Raw r c (listArray (0, r * c - 1) (concat xss))))
+  | otherwise = Nothing
   where
-    (./.) x y = case recipF y of
-      Just r -> x .*. r
-      Nothing -> error "eliminate: zero previous pivot"
+    r = dimOf (Proxy :: Proxy m)
+    c = dimOf (Proxy :: Proxy n)
 
--- | Rank as the number of nonzero rows of the Bareiss form.
-rank :: (Ring a, Eq a) => Matrix a -> Int
-rank a =
-  let n = min (rows a) (cols a)
-      go k a' count
-        | k >= n = count
-        | otherwise =
-            case findPivot k a' of
-              Nothing -> count
-              Just p ->
-                let a'' = if p == k then a' else swapRows k p a'
-                    piv = entry a'' k k
-                 in if isZero piv then count else go (k + 1) (eliminate k piv one a'') (count + 1)
-   in go 0 a 0
+generate :: forall m n a. (KnownNat m, KnownNat n) => (Int -> Int -> a) -> Matrix m n a
+generate f = Matrix (rawGen (dimOf (Proxy :: Proxy m)) (dimOf (Proxy :: Proxy n)) f)
 
--- | Inverse by adjoining the identity and eliminating. Nothing if singular.
-inverse :: (Field a, Eq a) => Matrix a -> Maybe (Matrix a)
-inverse a
-  | rows a /= cols a = Nothing
+identity :: (KnownNat n, Semiring a) => Matrix n n a
+identity = generate (\i j -> if i == j then one else zero)
+
+zeroMatrix :: (KnownNat m, KnownNat n, Semiring a) => Matrix m n a
+zeroMatrix = generate (\_ _ -> zero)
+
+-- | The diagonal matrix with entry @f i@ at @(i, i)@.
+diagonal :: (KnownNat n, Semiring a) => (Int -> a) -> Matrix n n a
+diagonal f = generate (\i j -> if i == j then f i else zero)
+
+toLists :: Matrix m n a -> [[a]]
+toLists (Matrix raw) = rawLists raw
+
+rows, cols :: Matrix m n a -> Int
+rows (Matrix (Raw r _ _)) = r
+cols (Matrix (Raw _ c _)) = c
+
+entry :: Matrix m n a -> Int -> Int -> Maybe a
+entry (Matrix raw@(Raw r c _)) i j
+  | i >= 0 && i < r && j >= 0 && j < c = Just (at raw i j)
+  | otherwise = Nothing
+
+-- | Bring a runtime size into the type, for code (tests, mostly) that picks
+-- dimensions at runtime.
+withSize :: Natural -> (forall n. KnownNat n => Proxy n -> r) -> r
+withSize k f = case someNatVal k of SomeNat p -> f p
+
+------------------------------------------------------------------------------
+-- Arithmetic
+
+zipRaw :: (a -> b -> c) -> Raw a -> Raw b -> Raw c
+zipRaw f x@(Raw r c _) y = rawGen r c (\i j -> f (at x i j) (at y i j))
+
+mapRaw :: (a -> b) -> Raw a -> Raw b
+mapRaw f x@(Raw r c _) = rawGen r c (\i j -> f (at x i j))
+
+add :: Semiring a => Matrix m n a -> Matrix m n a -> Matrix m n a
+add (Matrix x) (Matrix y) = Matrix (zipRaw (.+.) x y)
+
+sub :: Ring a => Matrix m n a -> Matrix m n a -> Matrix m n a
+sub (Matrix x) (Matrix y) = Matrix (zipRaw (.-.) x y)
+
+negateM :: Ring a => Matrix m n a -> Matrix m n a
+negateM (Matrix x) = Matrix (mapRaw neg x)
+
+scale :: Semiring a => a -> Matrix m n a -> Matrix m n a
+scale s (Matrix x) = Matrix (mapRaw (s .*.) x)
+
+transpose :: Matrix m n a -> Matrix n m a
+transpose (Matrix x@(Raw r c _)) = Matrix (rawGen c r (\i j -> at x j i))
+
+-- | The definition: @(AB)_ij = sum_l A_il B_lj@. Works over any semiring.
+mul :: Semiring a => Matrix m k a -> Matrix k n a -> Matrix m n a
+mul (Matrix x) (Matrix y) = Matrix (naiveRaw x y)
+
+naiveRaw :: Semiring a => Raw a -> Raw a -> Raw a
+naiveRaw x@(Raw r k _) y@(Raw _ c _) =
+  rawGen r c (\i j -> sumS [at x i l .*. at y l j | l <- [0 .. k - 1]])
+
+-- | Strassen's algorithm. It needs subtraction, so it is over a 'Ring'.
+--
+-- Operands are padded with zeros to the next power of two and the result is
+-- cropped; blocks at or below @cutoff@ rows use 'mul'. The cutoff changes cost,
+-- never the result, and the tests check that for several cutoffs.
+mulStrassen :: Ring a => Int -> Matrix m k a -> Matrix k n a -> Matrix m n a
+mulStrassen cutoff (Matrix x@(Raw r k _)) (Matrix y@(Raw _ c _)) =
+  let s = nextPow2 (foldr max 1 [r, k, c])
+      pad z = rawGen s s (\i j -> let Raw zr zc _ = z in if i < zr && j < zc then at z i j else zero)
+      full = strassenSq (max 1 cutoff) s (pad x) (pad y)
+   in Matrix (rawGen r c (at full))
+
+nextPow2 :: Int -> Int
+nextPow2 n = head' (dropWhile (< n) (iterate (* 2) 1))
+  where
+    head' (v : _) = v
+    head' [] = n
+
+strassenSq :: Ring a => Int -> Int -> Raw a -> Raw a -> Raw a
+strassenSq cutoff s a b
+  | s <= cutoff = naiveRaw a b
   | otherwise =
-      let n = rows a
-          aug = fromLists [toLists a !! i ++ toLists (identity n) !! i | i <- [0 .. n - 1]]
-          go k b
-            | k >= n = Just (fromLists [drop n row | row <- toLists b])
-            | otherwise =
-                case findPivot k b of
-                  Nothing -> Nothing
-                  Just p ->
-                    let b' = if p == k then b else swapRows k p b
-                        piv = entry b' k k
-                     in case recipF piv of
-                          Nothing -> Nothing
-                          Just r ->
-                            let b'' = scaleRow k r (eliminate k piv one b')
-                             in go (k + 1) b''
-       in go 0 aug
+      let h = s `div` 2
+          q z r0 c0 = rawGen h h (\i j -> at z (r0 + i) (c0 + j))
+          (a11, a12, a21, a22) = (q a 0 0, q a 0 h, q a h 0, q a h h)
+          (b11, b12, b21, b22) = (q b 0 0, q b 0 h, q b h 0, q b h h)
+          (+:) = zipRaw (.+.)
+          (-:) = zipRaw (.-.)
+          rec = strassenSq cutoff h
+          m1 = rec (a11 +: a22) (b11 +: b22)
+          m2 = rec (a21 +: a22) b11
+          m3 = rec a11 (b12 -: b22)
+          m4 = rec a22 (b21 -: b11)
+          m5 = rec (a11 +: a12) b22
+          m6 = rec (a21 -: a11) (b11 +: b12)
+          m7 = rec (a12 -: a22) (b21 +: b22)
+          c11 = ((m1 +: m4) -: m5) +: m7
+          c12 = m3 +: m5
+          c21 = m2 +: m4
+          c22 = ((m1 -: m2) +: m3) +: m6
+       in rawGen s s $ \i j -> case (i < h, j < h) of
+            (True, True) -> at c11 i j
+            (True, False) -> at c12 i (j - h)
+            (False, True) -> at c21 (i - h) j
+            (False, False) -> at c22 (i - h) (j - h)
 
-scaleRow :: Semiring a => Int -> a -> Matrix a -> Matrix a
-scaleRow r c a =
-  let pairs = [((i, j), if i == r then c .*. entry a i j else entry a i j) | i <- [0 .. rows a - 1], j <- [0 .. cols a - 1]]
-   in Matrix (rows a) (cols a) (array ((0, 0), (rows a - 1, cols a - 1)) pairs)
+-- | Exponentiation by squaring; @power a 0@ is the identity.
+power :: (KnownNat n, Semiring a) => Matrix n n a -> Natural -> Matrix n n a
+power a e
+  | e == 0 = identity
+  | even e = let h = power a (e `div` 2) in mul h h
+  | otherwise = mul a (power a (e - 1))
+
+trace :: Semiring a => Matrix n n a -> a
+trace (Matrix x@(Raw r _ _)) = sumS [at x i i | i <- [0 .. r - 1]]
+
+------------------------------------------------------------------------------
+-- Determinants
+
+-- | Fraction-free Gaussian elimination (Bareiss 1968). Every intermediate is
+-- a minor of the input, so over 'Integer' nothing leaves the integers and no
+-- entry grows beyond Hadamard's bound.
+det :: Domain a => Matrix n n a -> a
+det m = bareiss one one (toLists m)
+
+bareiss :: Domain a => a -> a -> [[a]] -> a
+bareiss _ sign [] = sign
+bareiss prev sign rs = case pivotSplit rs of
+  Nothing -> zero
+  Just (swapped, pivotRow, others) ->
+    let sign' = if swapped then neg sign else sign
+     in case pivotRow of
+          [] -> zero
+          (p : prow)
+            | null others -> sign' .*. p
+            | otherwise ->
+                let reduceRow r = case r of
+                      [] -> []
+                      (r0 : rrest) -> zipWith (\x y -> exactQuot ((x .*. p) .-. (r0 .*. y)) prev) rrest prow
+                 in bareiss p sign' (map reduceRow others)
+
+-- | The first row with a non-zero leading entry, moved to the front by a
+-- single transposition with the current first row.
+pivotSplit :: Semiring a => [[a]] -> Maybe (Bool, [a], [[a]])
+pivotSplit rs = case break leadsNonZero rs of
+  (_, []) -> Nothing
+  ([], p : rest) -> Just (False, p, rest)
+  (r0 : between, p : rest) -> Just (True, p, between ++ (r0 : rest))
+  where
+    leadsNonZero (x : _) = not (isZero x)
+    leadsNonZero [] = False
+
+-- | The Leibniz expansion, sum over permutations. Exponential: an oracle for
+-- 'det' on small matrices, never something to call on a large one.
+detLeibniz :: Ring a => Matrix n n a -> a
+detLeibniz (Matrix x@(Raw r _ _)) =
+  sumS
+    [ (if even (inversions p) then id else neg) (productS [at x i j | (i, j) <- zip [0 ..] p])
+    | p <- permutations' [0 .. r - 1]
+    ]
+  where
+    inversions p = length [() | (i, a) <- zip [0 :: Int ..] p, (j, b) <- zip [0 ..] p, i < j, a > b]
+
+-- | Permutations in an order whose correctness is easy to see.
+permutations' :: [Int] -> [[Int]]
+permutations' [] = [[]]
+permutations' xs = [y : p | (y, ys) <- picks xs, p <- permutations' ys]
+  where
+    picks [] = []
+    picks (z : zs) = (z, zs) : [(w, z : ws) | (w, ws) <- picks zs]
+
+------------------------------------------------------------------------------
+-- Rank and inverse over a field
+
+-- | Row-reduce to echelon form and count pivots.
+rank :: Field a => Matrix m n a -> Int
+rank = go . toLists
+  where
+    go rs = case filter (not . null) rs of
+      [] -> 0
+      rs' -> case pivotSplit rs' of
+        Nothing -> go (map (drop 1) rs') -- leading column is all zero
+        Just (_, p, others) -> case p of
+          [] -> 0
+          (p0 : prest) -> case recipF p0 of
+            Nothing -> 0
+            Just pinv ->
+              let elim r = case r of
+                    [] -> []
+                    (r0 : rrest) -> zipWith (\x y -> x .-. (r0 .*. pinv .*. y)) rrest prest
+               in 1 + go (map elim others)
+
+-- | Gauss–Jordan on @[A | I]@. 'Nothing' exactly when @A@ is singular.
+inverse :: forall n a. (KnownNat n, Field a) => Matrix n n a -> Maybe (Matrix n n a)
+inverse a = do
+  let n = rows a
+      augmented = zipWith (++) (toLists a) (toLists (identity :: Matrix n n a))
+  reduced <- jordan 0 n augmented
+  fromLists (map (drop n) reduced)
+
+jordan :: Field a => Int -> Int -> [[a]] -> Maybe [[a]]
+jordan k n rs
+  | k >= n = Just rs
+  | otherwise = do
+      let (above, from) = splitAt k rs
+      (pivot, rest) <- pickPivot from
+      pinv <- recipF (col pivot)
+      let pivot' = map (pinv .*.) pivot
+          clear r = let f = col r in zipWith (\x y -> x .-. (f .*. y)) r pivot'
+      jordan (k + 1) n (map clear above ++ (pivot' : map clear rest))
+  where
+    col r = case drop k r of
+      (v : _) -> v
+      [] -> zero
+    pickPivot from = case break (not . isZero . col) from of
+      (_, []) -> Nothing
+      (before, p : after) -> Just (p, before ++ after)
