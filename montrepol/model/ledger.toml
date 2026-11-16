@@ -1,22 +1,29 @@
-# Claims with no ID, and so no test: reproduced facts and measured quantities.
-# These are the things the gate is allowed to leave open.
+# model/ledger.toml --- claims with no conformance ID, and so no test (R2).
+#
+#   some-true  reproduced from an authority; not established here
+#   open       measured and reported; never asserted
+#
+# There is no `build` row here: a built claim needs an ID and a test, and
+# lives in model/ids.toml.
 
-[[entry]]
+spec = "montrepol/1"
+
+[[claim]]
 key = "strassen-exponent"
 level = "some-true"
 statement = "Strassen's algorithm uses O(n^log2(7)) ring operations. This repository checks that it computes the product, not how fast."
 evidence = "Cited, not measured."
 authorities = ["strassen-1969"]
 
-[[entry]]
+[[claim]]
 key = "zeta-zeros-complete"
 level = "some-true"
 statement = "Odlyzko's table lists every non-trivial zero of zeta with imaginary part in (0, 826.91], and each lies on the critical line. Here the zeros are located independently and matched to the table (AN-06); completeness is the table's, not verified by Turing's method here."
 evidence = "oracles/zeta-zeros-odlyzko.txt"
 authorities = ["odlyzko-zeros"]
 
-[[entry]]
+[[claim]]
 key = "explicit-formula-truncation"
 level = "open"
-statement = "Error of the explicit formula under truncation of the zeros."
-evidence = "Not checked here."
+statement = "Error of the explicit formula truncated to the first M zeros, against psi(x), x in 20.5..980.5 off prime powers. Measured max |err|/sqrt(x): 0.529 (M=0), 0.317 (M=10), 0.199 (M=100), 0.112 (M=512). No bound on the truncation error is claimed."
+evidence = "cabal run mp-analytic-report"

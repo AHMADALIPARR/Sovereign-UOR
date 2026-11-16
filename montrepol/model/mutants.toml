@@ -1,6 +1,35 @@
-# Planted defects. Each mutant must be caught by the tests named in `expect`.
-# The honesty workflow applies every mutant in turn, runs the suite, and
-# requires that the named IDs fail and that the tree is restored afterwards.
+# model/mutants.toml --- planted defects, and the tests that must catch them.
+#
+# A gate that cannot fail reads as evidence, so every piece of mathematics
+# here has at least one defect planted in it and the tests named in `expect`
+# must fail when it is. `cabal run mp-gate -- mutants` applies each one in
+# turn, runs that package's tests, and restores the file. A mutant counts as
+# caught only when a named test fails: a mutant that merely stops the build
+# (an unused binding under -Werror, say) is reported as not caught.
+
+[[mutant]]
+name = "Strassen: wrong product in C22"
+package = "mp-linalg"
+file = "packages/mp-linalg/src/MP/Matrix.hs"
+old = "c22 = ((m1 -: m2) +: m3) +: m6"
+new = "c22 = ((m1 -: m2) +: m3) -: m6"
+expect = ["LA-03"]
+
+[[mutant]]
+name = "Bareiss: row swap without sign flip"
+package = "mp-linalg"
+file = "packages/mp-linalg/src/MP/Matrix.hs"
+old = "sign' = if swapped then neg sign else sign"
+new = "sign' = if swapped then sign else sign"
+expect = ["LA-04"]
+
+[[mutant]]
+name = "Kish: 64-bit saturation reintroduced"
+package = "mp-linalg"
+file = "packages/mp-linalg/src/MP/Participation.hs"
+old = "Just (fromIntegral (s * s) / fromIntegral sq)"
+new = "Just (fromIntegral (min (s * s) (2 ^ (64 :: Int) - 1)) / fromIntegral (min sq (2 ^ (64 :: Int) - 1)))"
+expect = ["LA-08"]
 
 [[mutant]]
 name = "Weyl orbit: only reflect on positive coordinates"
