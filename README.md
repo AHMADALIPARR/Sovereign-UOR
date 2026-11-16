@@ -90,6 +90,13 @@ Dex oracle: see [docs/dex-oracle.md](docs/dex-oracle.md) for building Dex
 | [docs/README-original.md](docs/README-original.md) | The README as it was at commit `5db9b38` |
 | [docs/workflows-original/](docs/workflows-original/) | The workflows as they were before the CI fix |
 
+Per-file documents live under `docs/files/`, at the same path as the file
+they describe. Written so far:
+
+| File | Document |
+|---|---|
+| `src/main/scala/uor/kernel/Poly64.scala` | [docs/files/src/main/scala/uor/kernel/Poly64.scala.md](docs/files/src/main/scala/uor/kernel/Poly64.scala.md) |
+
 ## License
 
 AGPL-3.0-only OR LicenseRef-SnapKitty-Opaque-1.0. The AGPL text is in [LICENSE](LICENSE).
