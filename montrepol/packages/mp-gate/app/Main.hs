@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+
 -- | @mp-gate check@ (the default) reports every violation and exits non-zero
 -- if there is one. @mp-gate write@ regenerates CONFORMANCE.md from the model.
 -- @mp-gate mutants@ replays model/mutants.toml (see "Mutants").
@@ -68,9 +70,18 @@ loadRepo = do
     <*> readFile' "cabal.project"
     <*> pure dirs
     <*> pure pkgs
+    <*> filesWith ".agda" "formal" False
+    <*> filesWith ".hs" "liquid/src" False
+    <*> optionalFile "liquid/cabal.project"
+    <*> optionalFile "liquid/mp-liquid.cabal"
+    <*> topLevelFiles ".dx" "dex"
 
 hsFiles :: FilePath -> Bool -> IO [SourceFile]
-hsFiles dir isTest = do
+hsFiles = filesWith ".hs"
+
+-- | Every file under @dir@ with the extension, recursively, in a stable order.
+filesWith :: String -> FilePath -> Bool -> IO [SourceFile]
+filesWith ext dir isTest = do
   exists <- doesDirectoryExist dir
   if not exists
     then pure []
@@ -80,8 +91,27 @@ hsFiles dir isTest = do
         let p = dir </> e
         isDir <- doesDirectoryExist p
         if isDir
-          then hsFiles p isTest
-          else if ".hs" `isSuffixOf` e then (\t -> [SourceFile p t isTest]) <$> readFile' p else pure [])
+          then filesWith ext p isTest
+          else if ext `isSuffixOf` e then (\t -> [SourceFile p t isTest]) <$> readFile' p else pure [])
+
+-- | The files directly in @dir@ with the extension. Not recursive: dex/
+-- holds the upstream Dex checkout under .toolchain, which is not ours.
+topLevelFiles :: String -> FilePath -> IO [SourceFile]
+topLevelFiles ext dir = do
+  exists <- doesDirectoryExist dir
+  if not exists
+    then pure []
+    else do
+      entries <- sort <$> listDirectory dir
+      concat <$> forM entries (\e -> do
+        let p = dir </> e
+        isFile <- doesFileExist p
+        if isFile && ext `isSuffixOf` e then (\t -> [SourceFile p t True]) <$> readFile' p else pure [])
+
+optionalFile :: FilePath -> IO (Maybe String)
+optionalFile p = do
+  ok <- doesFileExist p
+  if ok then Just <$> readFile' p else pure Nothing
 
 readFileOrEmpty :: FilePath -> IO String
 readFileOrEmpty p = do

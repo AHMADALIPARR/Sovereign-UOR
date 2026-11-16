@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+
 -- The harness tests itself. A property runner that cannot fail is the most
 -- dangerous kind of vacuous gate, so CK-02 plants a false property and
 -- requires the runner to catch it.
