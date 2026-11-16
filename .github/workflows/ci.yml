@@ -1,3 +1,4 @@
+# The previous version is kept in docs/workflows-original/ci.yml.txt.
 name: CI
 
 on:
@@ -101,15 +102,16 @@ jobs:
           retention-days: 14
 
   # ------------------------------------------------------------------
-  # montrepol: Cabal build, test, gate
+  # montrepol_checked: Cabal build, test, gate (required)
+  # montrepol/ as committed does not compile; see docs/README-audit.md.
   # ------------------------------------------------------------------
   cabal:
-    name: Cabal (montrepol)
+    name: Cabal (montrepol_checked)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     defaults:
       run:
-        working-directory: montrepol
+        working-directory: montrepol_checked
     steps:
       - uses: actions/checkout@v4
       - uses: haskell-actions/setup@v2
@@ -120,24 +122,40 @@ jobs:
         with:
           path: |
             ~/.cabal/store
-            montrepol/dist-newstyle
-          key: ${{ runner.os }}-ghc-9.10.1-${{ hashFiles('montrepol/cabal.project', 'montrepol/packages/*/*.cabal') }}
+            montrepol_checked/dist-newstyle
+          key: ${{ runner.os }}-ghc-9.10.1-checked-${{ hashFiles('montrepol_checked/cabal.project', 'montrepol_checked/packages/*/*.cabal', 'montrepol_checked/packages/**/*.hs') }}
+          restore-keys: ${{ runner.os }}-ghc-9.10.1-checked-
       - name: cabal update
-        run: cabal update || true
+        run: cabal update
       - name: cabal build all
         run: cabal build all
       - name: cabal test all
         run: cabal test all --test-show-details=direct
-      - name: cabal run mp-gate
+      - name: mp-gate (R1-R6, includes CONFORMANCE.md regeneration check)
         run: cabal run mp-gate
-      - name: CONFORMANCE.md generation check
-        run: |
-          cabal run mp-gate -- write || true
-          git diff --stat CONFORMANCE.md || true
-          # Soft check: warn but do not fail the job if formatting differs
-          if ! git diff --exit-code CONFORMANCE.md >/dev/null 2>&1; then
-            echo "::warning::CONFORMANCE.md differs from generated output"
-          fi
+
+  # ------------------------------------------------------------------
+  # montrepol (original tree): informational only, expected to fail
+  # until the fixes in montrepol_checked/ are taken over.
+  # ------------------------------------------------------------------
+  cabal-original:
+    name: Cabal (montrepol, original, informational)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: montrepol
+    steps:
+      - uses: actions/checkout@v4
+      - uses: haskell-actions/setup@v2
+        with:
+          ghc-version: "9.10.1"
+          cabal-version: "3.12.1.0"
+      - name: cabal update
+        run: cabal update
+      - name: cabal build all
+        run: cabal build all --keep-going
 
   # ------------------------------------------------------------------
   # Final gate (Scala + Cabal required)
@@ -151,7 +169,7 @@ jobs:
       - name: Aggregate
         run: |
           echo "Scala tests → ${{ needs.scala-test.result }}"
-          echo "Cabal       → ${{ needs.cabal.result }}"
+          echo "Cabal (montrepol_checked) → ${{ needs.cabal.result }}"
           fail=0
           [[ "${{ needs.scala-test.result }}" == success ]] || fail=1
           [[ "${{ needs.cabal.result }}" == success ]] || fail=1

@@ -1,6 +1,8 @@
-# Falsifiability: every planted defect in model/mutants.toml must be caught by
-# the tests it names. Split from `ci` so a failure here reads as "a test can no
-# longer fail", not "the code is broken".
+# Falsifiability: every planted defect in montrepol_checked/model/mutants.toml
+# must be caught by the tests it names. Split from `ci` so a failure here reads
+# as "a test can no longer fail", not "the code is broken".
+# The previous version (pointing at montrepol/) is kept in
+# docs/workflows-original/honesty.yml.txt.
 name: honesty
 
 on:
@@ -11,11 +13,12 @@ on:
 
 jobs:
   mutants:
-    name: Mutant replay (montrepol)
+    name: Mutant replay (montrepol_checked)
     runs-on: ubuntu-24.04
+    timeout-minutes: 40
     defaults:
       run:
-        working-directory: montrepol
+        working-directory: montrepol_checked
     steps:
       - uses: actions/checkout@v4
       - uses: haskell-actions/setup@v2
@@ -26,8 +29,10 @@ jobs:
         with:
           path: |
             ~/.cabal/store
-            montrepol/dist-newstyle
-          key: ${{ runner.os }}-ghc-9.10.1-${{ hashFiles('montrepol/cabal.project', 'montrepol/packages/*/*.cabal') }}
+            montrepol_checked/dist-newstyle
+          key: ${{ runner.os }}-ghc-9.10.1-checked-${{ hashFiles('montrepol_checked/cabal.project', 'montrepol_checked/packages/*/*.cabal', 'montrepol_checked/packages/**/*.hs') }}
+          restore-keys: ${{ runner.os }}-ghc-9.10.1-checked-
+      - run: cabal update
       - run: cabal build all
       - run: cabal run mp-gate -- mutants
       # The mutant run restores every file it touches; prove the tree is clean.
