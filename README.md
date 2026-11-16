@@ -707,123 +707,211 @@ The Dex side needs a dex-lang build (LLVM 12, GHC 8.10.7 through stack);
 - The explicit-formula error is measured, not bounded, as the author's
   ledger already says.
 
-## Appendix: every file
 
-All 109 files at `ee9176b`, with `wc -l` line counts and the section that
-describes them. "stale" marks files built from the fabricated tree
-(section 2).
+## Appendix: Repository Layout
 
-| File | Lines | Section |
-|---|---|---|
-| `.github/workflows/ci.yml` | 180 | 7 |
-| `.github/workflows/dex-oracle.yml` | 170 | 7 |
-| `.github/workflows/honesty.yml` | 39 | 7 |
-| `.gitignore` | 28 | 1 |
-| `LICENSE` | 661 | 1 |
-| `README.md` | 911 | 1 |
-| `dex/det.dx` | 84 | 6 |
-| `dex/haskell/BareissVectors.hs` | 50 | 6, stale |
-| `dex/poly64.dx` | 113 | 6 |
-| `dex/scala/Poly64Vectors.scala` | 49 | 6 |
-| `docs/README-audit.md` | 262 | 8, stale |
-| `docs/README-original.md` | 287 | 8 |
-| `docs/REPO.md` | 884 | 8, stale |
-| `docs/dex-oracle.md` | 113 | 8 |
-| `docs/files/src/main/scala/uor/kernel/Poly64.scala.md` | 926 | 8 |
-| `docs/workflows-original/ci.yml.txt` | 162 | 8 |
-| `docs/workflows-original/honesty.yml.txt` | 34 | 8 |
-| `montrepol/.devcontainer/devcontainer.json` | 17 | 4.1 |
-| `montrepol/.github/workflows/ci.yml` | 32 | 4.2 |
-| `montrepol/.github/workflows/honesty.yml` | 29 | 4.2 |
-| `montrepol/.gitignore` | 11 | 4.1 |
-| `montrepol/AGENTS.md` | 67 | 4.2 |
-| `montrepol/CONFORMANCE.md` | 109 | 4.2 |
-| `montrepol/LICENSE` | 661 | 4.2 |
-| `montrepol/LICENSES/UOR-template-Apache-2.0.txt` | 176 | 4.2 |
-| `montrepol/LICENSES/UOR-template-MIT.txt` | 21 | 4.2 |
-| `montrepol/NOTICE` | 26 | 4.2 |
-| `montrepol/README.md` | 85 | 4.2 |
-| `montrepol/VERIFICATION.md` | 77 | 4.2 |
-| `montrepol/cabal.project` | 25 | 4.1 |
-| `montrepol/model/authorities.toml` | 52 | 4.3 |
-| `montrepol/model/ids.toml` | 301 | 4.3 |
-| `montrepol/model/ledger.toml` | 29 | 4.3 |
-| `montrepol/model/mutants.toml` | 112 | 4.3 |
-| `montrepol/oracles/zeta-zeros-odlyzko.txt` | 520 | 4.8 |
-| `montrepol/oracles/zeta-zeros-odlyzko_checked.txt` | 519 | 4.8 |
-| `montrepol/packages/mp-analytic/app/Main.hs` | 28 | 4.8 |
-| `montrepol/packages/mp-analytic/mp-analytic.cabal` | 28 | 4.1 |
-| `montrepol/packages/mp-analytic/src/MP/Bernoulli.hs` | 36 | 4.8 |
-| `montrepol/packages/mp-analytic/src/MP/ExplicitFormula.hs` | 28 | 4.8 |
-| `montrepol/packages/mp-analytic/src/MP/Primes.hs` | 64 | 4.8 |
-| `montrepol/packages/mp-analytic/src/MP/Zeta.hs` | 93 | 4.8 |
-| `montrepol/packages/mp-analytic/test/Main.hs` | 77 | 4.8 |
-| `montrepol/packages/mp-check/mp-check.cabal` | 20 | 4.1 |
-| `montrepol/packages/mp-check/src/MP/Check.hs` | 212 | 4.4 |
-| `montrepol/packages/mp-check/src/MP/Check/Random.hs` | 76 | 4.4 |
-| `montrepol/packages/mp-check/test/Main.hs` | 33 | 4.4 |
-| `montrepol/packages/mp-gate/app/Main.hs` | 97 | 4.9 |
-| `montrepol/packages/mp-gate/app/Mutants.hs` | 73 | 4.9 |
-| `montrepol/packages/mp-gate/mp-gate.cabal` | 30 | 4.1 |
-| `montrepol/packages/mp-gate/src/MP/Gate/Model.hs` | 88 | 4.9 |
-| `montrepol/packages/mp-gate/src/MP/Gate/Render.hs` | 56 | 4.9 |
-| `montrepol/packages/mp-gate/src/MP/Gate/Rules.hs` | 215 | 4.9 |
-| `montrepol/packages/mp-gate/src/MP/Gate/Scan.hs` | 129 | 4.9 |
-| `montrepol/packages/mp-gate/src/MP/Gate/Toml.hs` | 130 | 4.9 |
-| `montrepol/packages/mp-gate/test/Main.hs` | 133 | 4.9 |
-| `montrepol/packages/mp-lie/mp-lie.cabal` | 19 | 4.1 |
-| `montrepol/packages/mp-lie/src/MP/RootSystem.hs` | 196 | 4.6 |
-| `montrepol/packages/mp-lie/test/Main.hs` | 127 | 4.6 |
-| `montrepol/packages/mp-linalg/mp-linalg.cabal` | 21 | 4.1 |
-| `montrepol/packages/mp-linalg/src/MP/Algebra.hs` | 137 | 4.5 |
-| `montrepol/packages/mp-linalg/src/MP/Matrix.hs` | 304 | 4.5 |
-| `montrepol/packages/mp-linalg/src/MP/Participation.hs` | 49 | 4.5 |
-| `montrepol/packages/mp-linalg/test/Main.hs` | 250 | 4.5 |
-| `montrepol/packages/mp-seq/mp-seq.cabal` | 19 | 4.1 |
-| `montrepol/packages/mp-seq/src/MP/Recurrence.hs` | 87 | 4.7 |
-| `montrepol/packages/mp-seq/test/Main.hs` | 63 | 4.7 |
-| `montrepol_checked/.gitignore` | 11 | 5, stale |
-| `montrepol_checked/CONFORMANCE.md` | 77 | 5, stale |
-| `montrepol_checked/cabal.project` | 25 | 5, stale |
-| `montrepol_checked/model/authorities.toml` | 63 | 5, stale |
-| `montrepol_checked/model/ids.toml` | 263 | 5, stale |
-| `montrepol_checked/model/ledger.toml` | 22 | 5, stale |
-| `montrepol_checked/model/mutants.toml` | 84 | 5, stale |
-| `montrepol_checked/packages/mp-analytic/app/Main.hs` | 14 | 5, stale |
-| `montrepol_checked/packages/mp-analytic/mp-analytic.cabal` | 28 | 5, stale |
-| `montrepol_checked/packages/mp-analytic/src/MP/Bernoulli.hs` | 35 | 5, stale |
-| `montrepol_checked/packages/mp-analytic/src/MP/ExplicitFormula.hs` | 16 | 5, stale |
-| `montrepol_checked/packages/mp-analytic/src/MP/Primes.hs` | 52 | 5, stale |
-| `montrepol_checked/packages/mp-analytic/src/MP/Zeta.hs` | 89 | 5, stale |
-| `montrepol_checked/packages/mp-analytic/test/Main.hs` | 78 | 5, stale |
-| `montrepol_checked/packages/mp-check/mp-check.cabal` | 20 | 5, stale |
-| `montrepol_checked/packages/mp-check/src/MP/Check.hs` | 206 | 5, stale |
-| `montrepol_checked/packages/mp-check/src/MP/Check/Random.hs` | 76 | 5, stale |
-| `montrepol_checked/packages/mp-check/test/Main.hs` | 33 | 5, stale |
-| `montrepol_checked/packages/mp-gate/app/Main.hs` | 97 | 5, stale |
-| `montrepol_checked/packages/mp-gate/app/Mutants.hs` | 55 | 5, stale |
-| `montrepol_checked/packages/mp-gate/mp-gate.cabal` | 30 | 5, stale |
-| `montrepol_checked/packages/mp-gate/src/MP/Gate/Model.hs` | 109 | 5, stale |
-| `montrepol_checked/packages/mp-gate/src/MP/Gate/Render.hs` | 46 | 5, stale |
-| `montrepol_checked/packages/mp-gate/src/MP/Gate/Rules.hs` | 155 | 5, stale |
-| `montrepol_checked/packages/mp-gate/src/MP/Gate/Scan.hs` | 122 | 5, stale |
-| `montrepol_checked/packages/mp-gate/src/MP/Gate/Toml.hs` | 130 | 5, stale |
-| `montrepol_checked/packages/mp-gate/test/Main.hs` | 91 | 5, stale |
-| `montrepol_checked/packages/mp-lie/mp-lie.cabal` | 19 | 5, stale |
-| `montrepol_checked/packages/mp-lie/src/MP/RootSystem.hs` | 119 | 5, stale |
-| `montrepol_checked/packages/mp-lie/test/Main.hs` | 68 | 5, stale |
-| `montrepol_checked/packages/mp-linalg/mp-linalg.cabal` | 21 | 5, stale |
-| `montrepol_checked/packages/mp-linalg/src/MP/Algebra.hs` | 124 | 5, stale |
-| `montrepol_checked/packages/mp-linalg/src/MP/Matrix.hs` | 201 | 5, stale |
-| `montrepol_checked/packages/mp-linalg/src/MP/Participation.hs` | 19 | 5, stale |
-| `montrepol_checked/packages/mp-linalg/test/Main.hs` | 161 | 5, stale |
-| `montrepol_checked/packages/mp-seq/mp-seq.cabal` | 19 | 5, stale |
-| `montrepol_checked/packages/mp-seq/src/MP/Recurrence.hs` | 87 | 5, stale |
-| `montrepol_checked/packages/mp-seq/test/Main.hs` | 63 | 5, stale |
-| `src/main/scala/uor/ffi/UorExports.scala` | 111 | 3 |
-| `src/main/scala/uor/kernel/Poly64.scala` | 185 | 3 |
-| `src/main/scala/uor/kernel/U64.scala` | 8 | 3 |
-| `src/test/scala/uor/kernel/Poly64Test.scala` | 83 | 3 |
+All 109 files present at commit `ee9176b`. Line counts are from `wc -l`.  
+Files marked **stale** were produced against the fabricated tree (section 2) and must not be treated as descriptions of the restored `montrepol/`.
+
+### High-level structure
+
+```mermaid
+graph TD
+    Root["Sovereign UOR"]
+    Root --> Src["src/ — Scala kernel"]
+    Root --> Mp["montrepol/ — restored"]
+    Root --> Mpc["montrepol_checked/ — stale"]
+    Root --> Dex["dex/ — dual oracle"]
+    Root --> Docs["docs/"]
+    Root --> Gh[".github/workflows"]
+
+    Src --> Poly["Poly64.scala · U64.scala · UorExports.scala"]
+    Mp --> Model["model/ (ids.toml · ledger.toml · mutants.toml)"]
+    Mp --> Pkgs["packages/ (mp-linalg · mp-lie · mp-analytic · mp-gate · …)"]
+    Mp --> Formal["formal/ (Agda sketches)"]
+
+    style Mpc fill:#5a2a2a,stroke:#c44,color:#fff
+    style Mp fill:#1a3a2a,stroke:#4a4,color:#fff
+    style Src fill:#1a2a3a,stroke:#48a,color:#fff
+```
+
+### Live versus stale
+
+```mermaid
+flowchart LR
+    subgraph Live["Live source of truth"]
+        direction TB
+        A["src/"]
+        B["montrepol/"]
+        C["dex/poly64.dx and det.dx"]
+    end
+    subgraph Stale["Stale (section 2)"]
+        direction TB
+        D["montrepol_checked/"]
+        E["dex/haskell/BareissVectors.hs"]
+        F["docs/README-audit.md and REPO.md (partial)"]
+    end
+    B -.->|"restored from author's zip"| Live
+    D -.->|"built from fabricated tree"| Stale
+```
+
+### Architecture overview
+
+![Sovereign UOR Architecture](docs/images/architecture.png)
+
+### Directory map
+
+![Repository directory map](docs/images/directory-map.png)
+
+### Poly64 canonicalization
+
+![Poly64 Canonicalization](docs/images/poly64.png)
+
+### File inventory
+
+#### Root files
+
+| Path | Lines | Section | Status |
+|------|-------|---------|--------|
+| `.gitignore` | 28 | 1 | live |
+| `LICENSE` | 661 | 1 | live |
+| `README.md` | 911 | 1 | live |
+
+#### .github/workflows
+
+| Path | Lines | Section | Status |
+|------|-------|---------|--------|
+| `.github/workflows/ci.yml` | 180 | 7 | live |
+| `.github/workflows/dex-oracle.yml` | 170 | 7 | live |
+| `.github/workflows/honesty.yml` | 39 | 7 | live |
+
+#### src/ — Scala kernel
+
+| Path | Lines | Section | Status |
+|------|-------|---------|--------|
+| `src/main/scala/uor/ffi/UorExports.scala` | 111 | 3 | live |
+| `src/main/scala/uor/kernel/Poly64.scala` | 185 | 3 | live |
+| `src/main/scala/uor/kernel/U64.scala` | 8 | 3 | live |
+| `src/test/scala/uor/kernel/Poly64Test.scala` | 83 | 3 | live |
+
+#### dex/ — dual oracle
+
+| Path | Lines | Section | Status |
+|------|-------|---------|--------|
+| `dex/det.dx` | 84 | 6 | live |
+| `dex/haskell/BareissVectors.hs` | 50 | 6 | **stale** |
+| `dex/poly64.dx` | 113 | 6 | live |
+| `dex/scala/Poly64Vectors.scala` | 49 | 6 | live |
+
+#### docs/
+
+| Path | Lines | Section | Status |
+|------|-------|---------|--------|
+| `docs/README-audit.md` | 262 | 8 | **stale** |
+| `docs/README-original.md` | 287 | 8 | live |
+| `docs/REPO.md` | 884 | 8 | **stale** |
+| `docs/dex-oracle.md` | 113 | 8 | live |
+| `docs/files/src/main/scala/uor/kernel/Poly64.scala.md` | 926 | 8 | live |
+| `docs/workflows-original/ci.yml.txt` | 162 | 8 | live |
+| `docs/workflows-original/honesty.yml.txt` | 34 | 8 | live |
+
+#### montrepol/ — restored monorepo
+
+| Path | Lines | Section | Status |
+|------|-------|---------|--------|
+| `montrepol/.devcontainer/devcontainer.json` | 17 | 4.1 | live |
+| `montrepol/.github/workflows/ci.yml` | 32 | 4.2 | live |
+| `montrepol/.github/workflows/honesty.yml` | 29 | 4.2 | live |
+| `montrepol/.gitignore` | 11 | 4.1 | live |
+| `montrepol/AGENTS.md` | 67 | 4.2 | live |
+| `montrepol/CONFORMANCE.md` | 109 | 4.2 | live |
+| `montrepol/LICENSE` | 661 | 4.2 | live |
+| `montrepol/LICENSES/UOR-template-Apache-2.0.txt` | 176 | 4.2 | live |
+| `montrepol/LICENSES/UOR-template-MIT.txt` | 21 | 4.2 | live |
+| `montrepol/NOTICE` | 26 | 4.2 | live |
+| `montrepol/README.md` | 85 | 4.2 | live |
+| `montrepol/VERIFICATION.md` | 77 | 4.2 | live |
+| `montrepol/cabal.project` | 25 | 4.1 | live |
+| `montrepol/model/authorities.toml` | 52 | 4.3 | live |
+| `montrepol/model/ids.toml` | 301 | 4.3 | live |
+| `montrepol/model/ledger.toml` | 29 | 4.3 | live |
+| `montrepol/model/mutants.toml` | 112 | 4.3 | live |
+| `montrepol/oracles/zeta-zeros-odlyzko.txt` | 520 | 4.8 | live |
+| `montrepol/oracles/zeta-zeros-odlyzko_checked.txt` | 519 | 4.8 | live |
+| `montrepol/packages/mp-analytic/app/Main.hs` | 28 | 4.8 | live |
+| `montrepol/packages/mp-analytic/mp-analytic.cabal` | 28 | 4.1 | live |
+| `montrepol/packages/mp-analytic/src/MP/Bernoulli.hs` | 36 | 4.8 | live |
+| `montrepol/packages/mp-analytic/src/MP/ExplicitFormula.hs` | 28 | 4.8 | live |
+| `montrepol/packages/mp-analytic/src/MP/Primes.hs` | 64 | 4.8 | live |
+| `montrepol/packages/mp-analytic/src/MP/Zeta.hs` | 93 | 4.8 | live |
+| `montrepol/packages/mp-analytic/test/Main.hs` | 77 | 4.8 | live |
+| `montrepol/packages/mp-check/mp-check.cabal` | 20 | 4.1 | live |
+| `montrepol/packages/mp-check/src/MP/Check.hs` | 212 | 4.4 | live |
+| `montrepol/packages/mp-check/src/MP/Check/Random.hs` | 76 | 4.4 | live |
+| `montrepol/packages/mp-check/test/Main.hs` | 33 | 4.4 | live |
+| `montrepol/packages/mp-gate/app/Main.hs` | 97 | 4.9 | live |
+| `montrepol/packages/mp-gate/app/Mutants.hs` | 73 | 4.9 | live |
+| `montrepol/packages/mp-gate/mp-gate.cabal` | 30 | 4.1 | live |
+| `montrepol/packages/mp-gate/src/MP/Gate/Model.hs` | 88 | 4.9 | live |
+| `montrepol/packages/mp-gate/src/MP/Gate/Render.hs` | 56 | 4.9 | live |
+| `montrepol/packages/mp-gate/src/MP/Gate/Rules.hs` | 215 | 4.9 | live |
+| `montrepol/packages/mp-gate/src/MP/Gate/Scan.hs` | 129 | 4.9 | live |
+| `montrepol/packages/mp-gate/src/MP/Gate/Toml.hs` | 130 | 4.9 | live |
+| `montrepol/packages/mp-gate/test/Main.hs` | 133 | 4.9 | live |
+| `montrepol/packages/mp-lie/mp-lie.cabal` | 19 | 4.1 | live |
+| `montrepol/packages/mp-lie/src/MP/RootSystem.hs` | 196 | 4.6 | live |
+| `montrepol/packages/mp-lie/test/Main.hs` | 127 | 4.6 | live |
+| `montrepol/packages/mp-linalg/mp-linalg.cabal` | 21 | 4.1 | live |
+| `montrepol/packages/mp-linalg/src/MP/Algebra.hs` | 137 | 4.5 | live |
+| `montrepol/packages/mp-linalg/src/MP/Matrix.hs` | 304 | 4.5 | live |
+| `montrepol/packages/mp-linalg/src/MP/Participation.hs` | 49 | 4.5 | live |
+| `montrepol/packages/mp-linalg/test/Main.hs` | 250 | 4.5 | live |
+| `montrepol/packages/mp-seq/mp-seq.cabal` | 19 | 4.1 | live |
+| `montrepol/packages/mp-seq/src/MP/Recurrence.hs` | 87 | 4.7 | live |
+| `montrepol/packages/mp-seq/test/Main.hs` | 63 | 4.7 | live |
+
+#### montrepol_checked/ — stale corrected copy
+
+| Path | Lines | Section | Status |
+|------|-------|---------|--------|
+| `montrepol_checked/.gitignore` | 11 | 5 | **stale** |
+| `montrepol_checked/CONFORMANCE.md` | 77 | 5 | **stale** |
+| `montrepol_checked/cabal.project` | 25 | 5 | **stale** |
+| `montrepol_checked/model/authorities.toml` | 63 | 5 | **stale** |
+| `montrepol_checked/model/ids.toml` | 263 | 5 | **stale** |
+| `montrepol_checked/model/ledger.toml` | 22 | 5 | **stale** |
+| `montrepol_checked/model/mutants.toml` | 84 | 5 | **stale** |
+| `montrepol_checked/packages/mp-analytic/app/Main.hs` | 14 | 5 | **stale** |
+| `montrepol_checked/packages/mp-analytic/mp-analytic.cabal` | 28 | 5 | **stale** |
+| `montrepol_checked/packages/mp-analytic/src/MP/Bernoulli.hs` | 35 | 5 | **stale** |
+| `montrepol_checked/packages/mp-analytic/src/MP/ExplicitFormula.hs` | 16 | 5 | **stale** |
+| `montrepol_checked/packages/mp-analytic/src/MP/Primes.hs` | 52 | 5 | **stale** |
+| `montrepol_checked/packages/mp-analytic/src/MP/Zeta.hs` | 89 | 5 | **stale** |
+| `montrepol_checked/packages/mp-analytic/test/Main.hs` | 78 | 5 | **stale** |
+| `montrepol_checked/packages/mp-check/mp-check.cabal` | 20 | 5 | **stale** |
+| `montrepol_checked/packages/mp-check/src/MP/Check.hs` | 206 | 5 | **stale** |
+| `montrepol_checked/packages/mp-check/src/MP/Check/Random.hs` | 76 | 5 | **stale** |
+| `montrepol_checked/packages/mp-check/test/Main.hs` | 33 | 5 | **stale** |
+| `montrepol_checked/packages/mp-gate/app/Main.hs` | 97 | 5 | **stale** |
+| `montrepol_checked/packages/mp-gate/app/Mutants.hs` | 55 | 5 | **stale** |
+| `montrepol_checked/packages/mp-gate/mp-gate.cabal` | 30 | 5 | **stale** |
+| `montrepol_checked/packages/mp-gate/src/MP/Gate/Model.hs` | 109 | 5 | **stale** |
+| `montrepol_checked/packages/mp-gate/src/MP/Gate/Render.hs` | 46 | 5 | **stale** |
+| `montrepol_checked/packages/mp-gate/src/MP/Gate/Rules.hs` | 155 | 5 | **stale** |
+| `montrepol_checked/packages/mp-gate/src/MP/Gate/Scan.hs` | 122 | 5 | **stale** |
+| `montrepol_checked/packages/mp-gate/src/MP/Gate/Toml.hs` | 130 | 5 | **stale** |
+| `montrepol_checked/packages/mp-gate/test/Main.hs` | 91 | 5 | **stale** |
+| `montrepol_checked/packages/mp-lie/mp-lie.cabal` | 19 | 5 | **stale** |
+| `montrepol_checked/packages/mp-lie/src/MP/RootSystem.hs` | 119 | 5 | **stale** |
+| `montrepol_checked/packages/mp-lie/test/Main.hs` | 68 | 5 | **stale** |
+| `montrepol_checked/packages/mp-linalg/mp-linalg.cabal` | 21 | 5 | **stale** |
+| `montrepol_checked/packages/mp-linalg/src/MP/Algebra.hs` | 124 | 5 | **stale** |
+| `montrepol_checked/packages/mp-linalg/src/MP/Matrix.hs` | 201 | 5 | **stale** |
+| `montrepol_checked/packages/mp-linalg/src/MP/Participation.hs` | 19 | 5 | **stale** |
+| `montrepol_checked/packages/mp-linalg/test/Main.hs` | 161 | 5 | **stale** |
+| `montrepol_checked/packages/mp-seq/mp-seq.cabal` | 19 | 5 | **stale** |
+| `montrepol_checked/packages/mp-seq/src/MP/Recurrence.hs` | 87 | 5 | **stale** |
+| `montrepol_checked/packages/mp-seq/test/Main.hs` | 63 | 5 | **stale** |
 
 ## License
 
