@@ -1,7 +1,14 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # model/ledger.toml --- claims with no conformance ID, and so no test (R2).
 #
 #   some-true  reproduced from an authority; not established here
 #   open       measured and reported; never asserted
+#   proved     machine-checked by Agda under --safe; evidence is
+#              "formal/File.agda: lemma, ...", and the gate checks the
+#              file exists and defines every lemma named
+#   refined    checked by Liquid Haskell with Z3; evidence is
+#              "packages/.../File.hs: f, ...", and the gate checks each
+#              function has a spec and the liquid build compiles the module
 #
 # There is no `build` row here: a built claim needs an ID and a test, and
 # lives in model/ids.toml.
@@ -27,3 +34,29 @@ key = "explicit-formula-truncation"
 level = "open"
 statement = "Error of the explicit formula truncated to the first M zeros, against psi(x), x in 20.5..980.5 off prime powers. Measured max |err|/sqrt(x): 0.529 (M=0), 0.317 (M=10), 0.199 (M=100), 0.112 (M=512). No bound on the truncation error is claimed."
 evidence = "cabal run mp-analytic-report"
+
+[[claim]]
+key = "strassen-identities"
+level = "proved"
+statement = "In every abelian group with a product that distributes over addition on both sides (no associativity, commutativity or unit assumed), Strassen's seven products recombine into the four entries of the 2x2 product. n x n matrices over a ring form such a structure, so the identities apply to blocks; that fact is standard but not proved here. That MP.Matrix.strassenSq uses these same products is checked by reading, not mechanically."
+evidence = "formal/Montrepol/Strassen.agda: strassen-c11, strassen-c12, strassen-c21, strassen-c22"
+authorities = ["strassen-1969"]
+
+[[claim]]
+key = "abelian-solver-sound"
+level = "proved"
+statement = "The abelian-group normaliser used for the Strassen proof is sound in every model of the axioms: an expression and its normal form evaluate equally, so an equation between equal normal forms holds."
+evidence = "formal/Montrepol/Solver.agda: sound, solve"
+
+[[claim]]
+key = "kish-lower-bound"
+level = "proved"
+statement = "For every list of natural numbers w, sum of w_i^2 <= (sum of w_i)^2, so Kish's k_eff = (sum w)^2 / sum w^2 is at least 1 wherever it is defined. The upper bound k_eff <= n (Cauchy-Schwarz) is not proved here; LA-08 tests it."
+evidence = "formal/Montrepol/Kish.agda: kish-lower"
+authorities = ["kish-1965"]
+
+[[claim]]
+key = "lambda-simple-refined"
+level = "refined"
+statement = "Liquid Haskell checks MP.Lambda.Simple as it is in the core: size is at least 1; typeOf, shift, subst and step terminate, by the size of the term or structurally; evaluate terminates because its fuel decreases and is checked first; and every pattern match in the module is total. Trusts Liquid Haskell 0.9.10.1.2 and Z3 4.8.12."
+evidence = "packages/mp-lambda/src/MP/Lambda/Simple.hs: size, typeOf, evaluate"

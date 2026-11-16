@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # model/mutants.toml --- planted defects, and the tests that must catch them.
 #
 # A gate that cannot fail reads as evidence, so every piece of mathematics
@@ -110,3 +111,171 @@ file = "packages/mp-check/src/MP/Check.hs"
 old = "Result [] -> go (c + 1) s2"
 new = "Result [] -> if c >= 0 then Nothing else go (c + 1) s2"
 expect = ["CK-02"]
+
+[[mutant]]
+name = "Gate: SPDX header check disabled"
+package = "mp-gate"
+file = "packages/mp-gate/src/MP/Gate/Rules.hs"
+old = ", take 1 (lines (sourceText f)) /= [spdxHeader]"
+new = ", take 1 (lines (sourceText f)) /= [spdxHeader], False"
+expect = ["GT-06"]
+
+[[mutant]]
+name = "Proof: Strassen C12 stated with the wrong product"
+package = "formal"
+file = "formal/Montrepol/Strassen.agda"
+old = "strassen-c12 : M₃ + M₅ ≡ a₁₁ * b₁₂ + a₁₂ * b₂₂"
+new = "strassen-c12 : M₃ + M₅ ≡ a₁₁ * b₁₂ + a₁₂ * b₁₂"
+expect = ["Strassen.agda"]
+
+[[mutant]]
+name = "Proof: M6 defined with b22 in place of b12"
+package = "formal"
+file = "formal/Montrepol/Strassen.agda"
+old = "M₆ = (a₂₁ - a₁₁) * (b₁₁ + b₁₂)"
+new = "M₆ = (a₂₁ - a₁₁) * (b₁₁ + b₂₂)"
+expect = ["Strassen.agda"]
+
+[[mutant]]
+name = "Proof: normaliser forgets to swap signs under negation"
+package = "formal"
+file = "formal/Montrepol/Solver.agda"
+old = "norm (⊝ e)    = snd (norm e) , fst (norm e)"
+new = "norm (⊝ e)    = fst (norm e) , snd (norm e)"
+expect = ["Solver.agda"]
+
+[[mutant]]
+name = "Proof: Kish bound reversed"
+package = "formal"
+file = "formal/Montrepol/Kish.agda"
+old = "kish-lower : ∀ ws → sumSq ws ≤ sum ws * sum ws"
+new = "kish-lower : ∀ ws → sum ws * sum ws ≤ sumSq ws"
+expect = ["Kish.agda"]
+
+[[mutant]]
+name = "Gate: proved-claim lemma check disabled"
+package = "mp-gate"
+file = "packages/mp-gate/src/MP/Gate/Rules.hs"
+old = ", not (any ((n <> \" :\") `isPrefixOf`) (map (dropWhile isSpace) (lines (sourceText f))))"
+new = ", False && not (any ((n <> \" :\") `isPrefixOf`) (map (dropWhile isSpace) (lines (sourceText f))))"
+expect = ["GT-08"]
+
+[[mutant]]
+name = "Hcalc: refutation checker accepts anything"
+package = "mp-hcalc"
+file = "packages/mp-hcalc/src/MP/Hcalc/Sat.hs"
+old = "checkRefutation cs r = derive r == Just []"
+new = "checkRefutation cs r = derive r == Just [] || True"
+expect = ["HC-02"]
+
+[[mutant]]
+name = "Hcalc: Fourier-Motzkin drops strictness"
+package = "mp-hcalc"
+file = "packages/mp-hcalc/src/MP/Hcalc/Linear.hs"
+old = "(if rel kp == Lt || rel kn == Lt then Lt else Le)"
+new = "(if rel kp == Lt && rel kn == Lt then Lt else Le)"
+expect = ["HC-03"]
+
+[[mutant]]
+name = "Hcalc: back-substitution takes a strict bound itself"
+package = "mp-hcalc"
+file = "packages/mp-hcalc/src/MP/Hcalc/Linear.hs"
+old = "(Just (l, r), Nothing) -> if r == Le then l else l + 1"
+new = "(Just (l, r), Nothing) -> if r == Le then l else l"
+expect = ["HC-03"]
+
+[[mutant]]
+name = "Hcalc: Farkas checker allows negative multipliers"
+package = "mp-hcalc"
+file = "packages/mp-hcalc/src/MP/Hcalc/Linear.hs"
+old = "  all (>= 0) (Map.elems lam)\n"
+new = "  all (>= (-1000)) (Map.elems lam)\n"
+expect = ["HC-04"]
+
+[[mutant]]
+name = "Hcalc: negating e <= 0 gives -e <= 0"
+package = "mp-hcalc"
+file = "packages/mp-hcalc/src/MP/Hcalc/Smt.hs"
+old = "(if rel k == Le then Lt else Le)"
+new = "(if rel k == Le then Le else Lt)"
+expect = ["HC-05"]
+
+[[mutant]]
+name = "Hcalc: Tseitin OR gate missing its upward clauses"
+package = "mp-hcalc"
+file = "packages/mp-hcalc/src/MP/Hcalc/Smt.hs"
+old = "    mapM_ (\\l -> emit [g, negate l]) ls\n"
+new = "    mapM_ (\\l -> emit [g, negate l]) (take 0 ls)\n"
+expect = ["HC-07"]
+
+[[mutant]]
+name = "Lambda: substitution under a binder forgets to shift"
+package = "mp-lambda"
+file = "packages/mp-lambda/src/MP/Lambda/Simple.hs"
+old = "Lam a body -> Lam a (subst (j + 1) (shift 1 0 s) body)"
+new = "Lam a body -> Lam a (subst (j + 1) s body)"
+expect = ["LM-05"]
+
+[[mutant]]
+name = "Refine: subtyping between integers always succeeds"
+package = "mp-lambda"
+file = "packages/mp-lambda/src/MP/Lambda/Refine.hs"
+old = "subtype env (RInt v p) (RInt w q) =\n  valid'"
+new = "subtype env (RInt v p) (RInt w q) =\n  const (Right ()) $ valid'"
+expect = ["LM-08"]
+
+[[mutant]]
+name = "Refine: substitution into types captures"
+package = "mp-lambda"
+file = "packages/mp-lambda/src/MP/Lambda/Refine.hs"
+old = "    | z == y -> let z' = freshFrom z t in RFun z' (substType x y a) (substType x y (substType z z' b))\n"
+new = "    | z == y && False -> let z' = freshFrom z t in RFun z' (substType x y a) (substType x y (substType z z' b))\n"
+expect = ["LM-09"]
+
+[[mutant]]
+name = "Liquid: size of a variable claimed 0"
+package = "liquid"
+file = "packages/mp-lambda/src/MP/Lambda/Simple.hs"
+old = "  _ -> 1\n"
+new = "  _ -> 0\n"
+expect = ["Simple.hs"]
+
+[[mutant]]
+name = "Liquid: typeOf recurses on the whole term under a lambda"
+package = "liquid"
+file = "packages/mp-lambda/src/MP/Lambda/Simple.hs"
+old = "  Lam a body -> TArr a <$> typeOf (a : ctx) body"
+new = "  Lam a body -> TArr a <$> typeOf (a : ctx) (if size body > 0 then t else body)"
+expect = ["Simple.hs"]
+
+[[mutant]]
+name = "Liquid: evaluate keeps stepping when the fuel is spent"
+package = "liquid"
+file = "packages/mp-lambda/src/MP/Lambda/Simple.hs"
+old = "  | fuel <= 0 = Nothing\n"
+new = "  | fuel < 0 = Nothing\n"
+expect = ["Simple.hs"]
+
+[[mutant]]
+name = "Dex: Strassen C22 with M6 subtracted"
+package = "dex"
+file = "dex/Montrepol.dx"
+old = "[[m1 + m4 - m5 + m7, m3 + m5], [m2 + m4, m1 - m2 + m3 + m6]]"
+new = "[[m1 + m4 - m5 + m7, m3 + m5], [m2 + m4, m1 - m2 + m3 - m6]]"
+expect = ["> True"]
+
+[[mutant]]
+name = "Dex: product adds a stray term"
+package = "dex"
+file = "dex/Montrepol.dx"
+old = "  for i l. sum for j:m. x[i,j] * y[j,l]"
+new = "  for i l. sum for j:m. x[i,j] * y[j,l] + x[i,j]"
+expect = ["> True"]
+
+[[mutant]]
+name = "Dex: Kish comparison made strict"
+package = "dex"
+file = "dex/Montrepol.dx"
+old = "  (total * total) >= (k * squares)"
+new = "  (total * total) > (k * squares)"
+expect = ["> True"]

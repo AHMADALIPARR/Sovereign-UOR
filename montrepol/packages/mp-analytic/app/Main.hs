@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+
 -- | Measures, and only measures, how well the truncated explicit formula
 -- reproduces psi(x). The numbers this prints are the evidence for the
 -- ledger's @open@ rows; nothing here is asserted, because no error bound for
