@@ -53,6 +53,13 @@ jobs:
           key: ${{ runner.os }}-dex-${{ hashFiles('montrepol/dex/build.sh') }}
       - run: bash dex/build.sh
       - run: cabal build all
+      # Build the liquid layer once, unmodified, so its Hackage dependencies
+      # (liquidhaskell and the libraries it checks with the plugin) are in the
+      # store before the mutants run. Otherwise the first liquid mutant also
+      # compiles them, their own "LIQUID: SAFE" lines appear in its output, and
+      # mp-gate counts that mutant as missed.
+      - run: cabal build all
+        working-directory: montrepol/liquid
       - run: cabal run mp-gate -- mutants
       # The mutant run restores every file it touches; prove the tree is clean.
       - run: git diff --exit-code

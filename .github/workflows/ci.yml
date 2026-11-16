@@ -187,13 +187,12 @@ jobs:
         working-directory: montrepol/liquid
 
   # ------------------------------------------------------------------
-  # montrepol: Dex quine checks (non-blocking until proven on CI)
+  # montrepol: Dex quine checks (required)
   # ------------------------------------------------------------------
   dex:
     name: montrepol Dex
     runs-on: ubuntu-24.04
     timeout-minutes: 300
-    continue-on-error: true
     defaults:
       run:
         working-directory: montrepol
@@ -221,7 +220,7 @@ jobs:
   status:
     name: CI Status
     runs-on: ubuntu-latest
-    needs: [scala-test, vv, formal, liquid]
+    needs: [scala-test, vv, formal, liquid, dex]
     if: always()
     steps:
       - name: Aggregate
@@ -230,11 +229,13 @@ jobs:
           echo "montrepol build, test, gate → ${{ needs.vv.result }}"
           echo "montrepol Agda proofs → ${{ needs.formal.result }}"
           echo "montrepol Liquid Haskell → ${{ needs.liquid.result }}"
+          echo "montrepol Dex → ${{ needs.dex.result }}"
           fail=0
           [[ "${{ needs.scala-test.result }}" == success ]] || fail=1
           [[ "${{ needs.vv.result }}" == success ]] || fail=1
           [[ "${{ needs.formal.result }}" == success ]] || fail=1
           [[ "${{ needs.liquid.result }}" == success ]] || fail=1
+          [[ "${{ needs.dex.result }}" == success ]] || fail=1
           if [[ $fail -ne 0 ]]; then
             echo "❌ a required job failed"
             exit 1
