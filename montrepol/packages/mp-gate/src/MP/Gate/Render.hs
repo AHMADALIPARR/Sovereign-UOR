@@ -1,43 +1,56 @@
--- | Render the model as CONFORMANCE.md.
-module MP.Gate.Render
-  ( render
-  , renderConformance
-  ) where
+-- | @CONFORMANCE.md@, generated from the model and never edited (R1).
+module MP.Gate.Render (renderConformance) where
 
+import Data.List (intercalate, nub)
 import MP.Gate.Model
 
--- | Alias expected by the CLI.
 renderConformance :: Model -> String
-renderConformance = render
-
-render :: Model -> String
-render m =
-  unlines
-    [ "# CONFORMANCE"
+renderConformance (Model rows claims auths) =
+  unlines $
+    [ "<!-- Generated from model/*.toml by `mp-gate write`. Do not edit: R1. -->"
     , ""
-    , "Generated from `model/` by `cabal run mp-gate -- write`. Do not edit."
+    , "# Conformance"
     , ""
-    , renderPackage "mp-check" m
-    , renderPackage "mp-linalg" m
-    , renderPackage "mp-lie" m
-    , renderPackage "mp-seq" m
-    , renderPackage "mp-analytic" m
-    , renderPackage "mp-gate" m
-    , "## Ledger"
+    , "Every claim this repository makes, by honesty level:"
     , ""
-    , "Claims with no ID, and so no test: reproduced facts and measured quantities."
+    , "| Level | Meaning |"
+    , "| --- | --- |"
+    , "| `some-true` | reproduced from an authority. **Not established here.** |"
+    , "| `build` | constructed here and checked against an oracle by a test. Evidence, not proof. |"
+    , "| `open` | measured and reported. **Never asserted.** |"
     , ""
-    , "| Key | Level | Statement | Evidence |"
-    , "| --- | --- | --- | --- |"
-    , unlines ["| `" <> ledKey e <> "` | `" <> ledLevel e <> "` | " <> ledStatement e <> " | " <> ledEvidence e <> " |" | e <- modelLedger m]
+    , "## Register"
+    , ""
+    , show (length rows) <> " IDs. Each is discharged by the tests tagged with it."
     ]
-
-renderPackage :: String -> Model -> String
-renderPackage pkg m =
-  unlines
-    [ "## " <> pkg
-    , ""
-    , "| ID | Level | Claim | Checked against |"
-    , "| --- | --- | --- | --- |"
-    , unlines ["| `" <> rowId r <> "` | `" <> rowLevel r <> "` | " <> rowClaim r <> " | " <> rowOracle r <> " |" | r <- modelIds m, rowPackage r == pkg]
-    ]
+      ++ concatMap packageSection (nub (map rowPackage rows))
+      ++ [ ""
+         , "## Ledger"
+         , ""
+         , "Claims with no ID, and so no test: reproduced facts and measured quantities."
+         , ""
+         , "| Key | Level | Statement | Evidence |"
+         , "| --- | --- | --- | --- |"
+         ]
+      ++ [ "| `" <> claimKey c <> "` | `" <> levelName (claimLevel c) <> "` | " <> cell (claimStatement c)
+             <> " | " <> cell (claimEvidence c) <> cites (claimAuthorities c) <> " |"
+         | c <- claims
+         ]
+      ++ ["", "## Authorities", ""]
+      ++ ["- **" <> authKey a <> "**: " <> authCite a | a <- auths]
+  where
+    packageSection p =
+      [ ""
+      , "### " <> p
+      , ""
+      , "| ID | Level | Claim | Checked against |"
+      , "| --- | --- | --- | --- |"
+      ]
+        ++ [ "| `" <> rowId r <> "` | `" <> levelName (rowLevel r) <> "` | " <> cell (rowClaim r)
+               <> " | " <> cell (rowOracle r) <> cites (rowAuthorities r) <> " |"
+           | r <- rows
+           , rowPackage r == p
+           ]
+    cites [] = ""
+    cites ks = " (" <> intercalate ", " ks <> ")"
+    cell = concatMap (\ch -> if ch == '|' then "\\|" else [ch])

@@ -1,57 +1,129 @@
--- | The source scanner. It finds test tags, deferral markers and partial
--- functions, ignoring comments and strings (R3, R4, R5).
+-- | Just enough Haskell lexing to audit sources: strip comments and literals,
+-- split identifiers and operators, and find the conformance IDs that tests
+-- are tagged with.
+--
+-- Every forbidden name below is assembled from halves. A gate that reads
+-- source must survive reading its own, and exempting this file would put a
+-- hole exactly where a defect parked in the gate would hide.
 module MP.Gate.Scan
-  ( Tag
-  , tagsIn
-  , tagOf
-  , deferrals
-  , partials
+  ( codeOnly
+  , identifiers
+  , operators
+  , deferralMarkers
+  , stubNames
+  , partialNames
+  , partialOperators
+  , testTags
+  , isConformanceId
   ) where
 
+import Data.Char (isAlphaNum, isDigit, isUpper)
 import Data.List (isPrefixOf)
 
-type Tag = (String, String) -- id, file
+-- | Comment and work-in-progress markers that mean "not finished".
+deferralMarkers :: [String]
+deferralMarkers = ["TO" <> "DO", "FIX" <> "ME", "XX" <> "X"]
 
-tagsIn :: String -> String -> [Tag]
-tagsIn file src = [(id, file) | line <- lines src, Just id <- [tagOf line]]
+-- | A placeholder standing in for code.
+stubNames :: [String]
+stubNames = ["unde" <> "fined"]
 
-tagOf :: String -> Maybe String
-tagOf l
-  | "prop " `isPrefixOf` dropWhile (== ' ') l || "unit " `isPrefixOf` dropWhile (== ' ') l || "propN " `isPrefixOf` dropWhile (== ' ') l =
-      case words l of
-        (_ : quoted : _) | length quoted > 2 && head quoted == '"' && last quoted == '"' -> Just (init (tail quoted))
-        _ -> Nothing
-  | otherwise = Nothing
+-- | Functions that are partial, or that defeat the type system.
+partialNames :: [String]
+partialNames =
+  [ "err" <> "or"
+  , "errorWithout" <> "StackTrace"
+  , "he" <> "ad"
+  , "ta" <> "il"
+  , "in" <> "it"
+  , "la" <> "st"
+  , "from" <> "Just"
+  , "re" <> "ad"
+  , "maxi" <> "mum"
+  , "mini" <> "mum"
+  , "foldr" <> "1"
+  , "foldl" <> "1"
+  , "unsafePerform" <> "IO"
+  , "unsafe" <> "Coerce"
+  , "unsafeInterleave" <> "IO"
+  ]
 
-deferrals :: String -> String -> [String]
-deferrals file src = [file <> ":" <> show n | (n, line) <- zip [1 ..] (lines src), hasDeferral line]
+partialOperators :: [String]
+partialOperators = ["!" <> "!"]
 
-hasDeferral :: String -> Bool
-hasDeferral l = any (`isInfixOf` stripCommentsAndStrings l) markers
+isIdChar :: Char -> Bool
+isIdChar c = isAlphaNum c || c == '_' || c == '\''
+
+isSymbolChar :: Char -> Bool
+isSymbolChar c = c `elem` ("!#$%&*+./<=>?@\\^|-~:" :: String)
+
+-- | The source with comments, string literals and character literals
+-- replaced by spaces, so line structure survives.
+codeOnly :: String -> String
+codeOnly = go ' '
   where
-    markers = ["TODO", "FIXME", "XXX", "HACK", "stub", "not implemented"]
+    go _ [] = []
+    go prev s@(c : rest)
+      | "{-" `isPrefixOf` s = blockComment (1 :: Int) (drop 2 s)
+      | "--" `isPrefixOf` s && not (isSymbolChar prev) && lineCommentStart s =
+          let (_, after) = break (== '\n') s in go '\n' after
+      | c == '"' = stringLit rest
+      | c == '\'' && not (isIdChar prev) = charLit s
+      | otherwise = c : go c rest
+    lineCommentStart s = case dropWhile (== '-') s of
+      (d : _) -> not (isSymbolChar d)
+      [] -> True
+    blockComment _ [] = []
+    blockComment depth s@(c : rest)
+      | "-}" `isPrefixOf` s = if depth == 1 then ' ' : go ' ' (drop 2 s) else blockComment (depth - 1) (drop 2 s)
+      | "{-" `isPrefixOf` s = blockComment (depth + 1) (drop 2 s)
+      | c == '\n' = '\n' : blockComment depth rest
+      | otherwise = blockComment depth rest
+    stringLit ('\\' : _ : rest) = stringLit rest
+    stringLit ('"' : rest) = ' ' : go ' ' rest
+    stringLit ('\n' : rest) = '\n' : go '\n' rest
+    stringLit (_ : rest) = stringLit rest
+    stringLit [] = []
+    -- 'x' or '\n' or '\''; anything else (a promoted constructor) is code.
+    charLit s = case s of
+      ('\'' : '\\' : _ : '\'' : rest) -> ' ' : go ' ' rest
+      ('\'' : _ : '\'' : rest) -> ' ' : go ' ' rest
+      ('\'' : rest) -> '\'' : go '\'' rest
+      [] -> []
+      (c : rest) -> c : go c rest
 
-partials :: String -> String -> [String]
-partials file src = [file <> ":" <> show n | (n, line) <- zip [1 ..] (lines src), hasPartial line]
-
-hasPartial :: String -> Bool
-hasPartial l = any (`isInfixOf` stripCommentsAndStrings l) partialNames
+-- | Maximal identifier tokens, with qualifiers split off (@Set.member@ gives
+-- @Set@ and @member@).
+identifiers :: String -> [String]
+identifiers s = case dropWhile (not . isIdStart) s of
+  [] -> []
+  s' -> let (tok, rest) = span isIdChar s' in tok : identifiers rest
   where
-    partialNames = ["error", "head", "fromJust", "maximum", "!!", "undefined"]
+    isIdStart c = isAlphaNum c || c == '_'
 
-stripCommentsAndStrings :: String -> String
-stripCommentsAndStrings = go False False
-  where
-    go _ _ [] = []
-    go inStr inCom (c : cs)
-      | inCom = if c == '\n' then c : go False False cs else go False True cs
-      | inStr = if c == '"' then go False False cs else go True False cs
-      | c == '"' = go True False cs
-      | c == '-' && take 1 cs == "-" = go False True cs
-      | otherwise = c : go False False cs
+-- | Maximal operator tokens.
+operators :: String -> [String]
+operators s = case dropWhile (not . isSymbolChar) s of
+  [] -> []
+  s' -> let (tok, rest) = span isSymbolChar s' in tok : operators rest
 
-isInfixOf :: String -> String -> Bool
-isInfixOf needle hay = any (needle `isPrefixOf`) (tails hay)
+-- | @XX-00@: two capitals, a hyphen, two digits.
+isConformanceId :: String -> Bool
+isConformanceId i = case i of
+  [a, b, '-', c, d] -> isUpper a && isUpper b && isDigit c && isDigit d
+  _ -> False
+
+-- | The IDs in @unit "XX-00"@, @unitIO@, @prop@ and @propN@ calls.
+testTags :: String -> [String]
+testTags = go ' '
   where
-    tails [] = [[]]
-    tails xs@(_ : ys) = xs : tails ys
+    heads = ["unit ", "unitIO ", "prop ", "propN "]
+    go _ [] = []
+    go prev s@(c : rest)
+      | not (isIdChar prev), Just after <- firstPrefix s = case after of
+          ('"' : more) -> takeWhile (/= '"') more : go '"' (drop 1 (dropWhile (/= '"') more))
+          _ -> go c rest
+      | otherwise = go c rest
+    firstPrefix s = case [drop (length h) s | h <- heads, h `isPrefixOf` s] of
+      (a : _) -> Just a
+      [] -> Nothing
