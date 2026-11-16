@@ -1,0 +1,14 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+
+-- The Liquid Haskell layer: a separate build, deliberately outside the root
+-- cabal.project. It is the one place in the repository allowed to use Hackage
+-- (liquidhaskell) and an external solver (Z3). Nothing in packages/ may
+-- depend on it; the gate checks both directions (R6).
+
+packages: .
+
+with-compiler: ghc-9.10.1
+
+-- Hackage as it was when this layer was first built, so the solver resolves
+-- the same versions everywhere.
+index-state: 2026-11-15T20:23:46Z
