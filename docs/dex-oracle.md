@@ -35,12 +35,17 @@ case 0 n 5 det 755160
 Terms are `e0,e1:coefficient` in lexicographic order of the exponents, with
 16-digit hex coefficients; a zero polynomial prints as `0`.
 
-## Measured agreement (local run, 2026-11-15)
+## Measured agreement
 
-| Comparison | Identical lines |
-|---|---|
-| Scala Poly64 vs `poly64.dx` | 600 of 600 |
-| Haskell Bareiss vs `det.dx` | 200 of 200 |
+| Comparison | Local run (2026-11-15) | CI, dex-oracle run 5 (commit `9e27e68`) |
+|---|---|---|
+| Scala Poly64 vs `poly64.dx` | 600 of 600 | 600 of 600 |
+| Haskell Bareiss vs `det.dx` | 200 of 200 | 200 of 200 |
+
+CI run: https://github.com/AHMADALIPARR/Sovereign-UOR/actions/runs/43783588614.
+In that run the "Build dex" step took 10 min 17 s and the compare step 12 s;
+the finished build is cached under the key
+`dex-25e2e389b90403ae2f8d67fb6d52f47d23c439ee-jammy-llvm12-v1-done`.
 
 Matrix sizes in the 200 determinant cases: n=1: 33, n=2: 28, n=3: 30, n=4: 33,
 n=5: 40, n=6: 36.

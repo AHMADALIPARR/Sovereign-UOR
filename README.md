@@ -29,8 +29,9 @@ Checked on 2026-11-15.
   is `montrepol/oracles/zeta-zeros-odlyzko_checked.txt`. The zero finder in
   `montrepol_checked` finds exactly 512 zeros on (10, 827] and matches the
   corrected table to within 5.3e-11.
-- Dex oracle, local run: 600 of 600 Poly64 lines agree with the Scala kernel,
-  200 of 200 determinants agree with `montrepol_checked`.
+- Dex oracle: 600 of 600 Poly64 lines agree with the Scala kernel and 200 of
+  200 determinants agree with `montrepol_checked`, both locally and in CI
+  (`dex-oracle` run 5).
 
 The full list of findings, with file and line references, is in
 [docs/README-audit.md](docs/README-audit.md). The previous README is kept
