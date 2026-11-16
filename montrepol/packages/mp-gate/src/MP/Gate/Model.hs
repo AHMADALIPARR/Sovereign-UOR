@@ -1,103 +1,88 @@
--- | The model: the claim register the gate reads.
+-- | The claim register, the ledger and the authorities, read from
+-- @model/*.toml@.
 module MP.Gate.Model
-  ( IdRow(..)
-  , Authority(..)
-  , Mutant(..)
-  , LedgerEntry(..)
-  , Model(..)
-  , loadModel
+  ( Level (..)
+  , levelName
+  , Row (..)
+  , Claim (..)
+  , Authority (..)
+  , Model (..)
   , readModel
   ) where
 
 import MP.Gate.Toml
 
-data IdRow = IdRow
+-- | The honesty levels (R2).
+--
+-- * 'SomeTrue': reproduced from an authority; not established here.
+-- * 'Build': constructed here and checked against an oracle; evidence, not proof.
+-- * 'Open': measured and reported, never asserted.
+data Level = SomeTrue | Build | Open
+  deriving (Eq, Show)
+
+levelName :: Level -> String
+levelName l = case l of
+  SomeTrue -> "some-true"
+  Build -> "build"
+  Open -> "open"
+
+parseLevel :: String -> Maybe Level
+parseLevel s = case s of
+  "some-true" -> Just SomeTrue
+  "build" -> Just Build
+  "open" -> Just Open
+  _ -> Nothing
+
+-- | A row of @model/ids.toml@: one conformance ID.
+data Row = Row
   { rowId :: String
   , rowPackage :: String
-  , rowLevel :: String
+  , rowLevel :: Level
   , rowClaim :: String
   , rowOracle :: String
   , rowAuthorities :: [String]
   }
   deriving (Eq, Show)
 
-data Authority = Authority
-  { authId :: String
-  , authTitle :: String
+-- | A row of @model/ledger.toml@: a claim with no ID and so no test.
+data Claim = Claim
+  { claimKey :: String
+  , claimLevel :: Level
+  , claimStatement :: String
+  , claimEvidence :: String
+  , claimAuthorities :: [String]
   }
   deriving (Eq, Show)
 
-data Mutant = Mutant
-  { mutName :: String
-  , mutPackage :: String
-  , mutFile :: String
-  , mutOld :: String
-  , mutNew :: String
-  , mutExpect :: [String]
-  }
-  deriving (Eq, Show)
-
-data LedgerEntry = LedgerEntry
-  { ledKey :: String
-  , ledLevel :: String
-  , ledStatement :: String
-  , ledEvidence :: String
-  }
+data Authority = Authority {authKey :: String, authCite :: String}
   deriving (Eq, Show)
 
 data Model = Model
-  { modelIds :: [IdRow]
+  { modelRows :: [Row]
+  , modelClaims :: [Claim]
   , modelAuthorities :: [Authority]
-  , modelMutants :: [Mutant]
-  , modelLedger :: [LedgerEntry]
   }
   deriving (Eq, Show)
 
--- | Alias expected by the CLI.
+-- | Parse the three files, or say which one is malformed and how.
 readModel :: String -> String -> String -> Either String Model
-readModel idsSrc ledgerSrc authSrc = loadModel idsSrc authSrc "" ledgerSrc
-
-loadModel :: String -> String -> String -> String -> Either String Model
-loadModel idsSrc authSrc mutSrc ledSrc = do
-  ids <- parseIds idsSrc
-  auths <- parseAuths authSrc
-  muts <- parseMuts mutSrc
-  leds <- parseLeds ledSrc
-  pure (Model ids auths muts leds)
-
-parseIds :: String -> Either String [IdRow]
-parseIds src = case parseToml src of
-  Left e -> Left e
-  Right (VTable tbl) -> Right [row | ("id", VTable r) <- tbl, Just row <- [mkId r]]
-  _ -> Left "ids: not a table"
-
-mkId :: [(String, Value)] -> Maybe IdRow
-mkId r = IdRow <$> lookupS "id" r <*> lookupS "package" r <*> lookupS "level" r <*> lookupS "claim" r <*> lookupS "oracle" r <*> pure (lookupA "authorities" r)
-
-parseAuths :: String -> Either String [Authority]
-parseAuths src = case parseToml src of
-  Left e -> Left e
-  Right (VTable tbl) -> Right [Authority i t | ("authority", VTable r) <- tbl, Just i <- [lookupS "id" r], Just t <- [lookupS "title" r]]
-  _ -> Left "auths: not a table"
-
-parseMuts :: String -> Either String [Mutant]
-parseMuts src = case parseToml src of
-  Left e -> Left e
-  Right (VTable tbl) -> Right [Mutant n p f o nw e | ("mutant", VTable r) <- tbl, Just n <- [lookupS "name" r], Just p <- [lookupS "package" r], Just f <- [lookupS "file" r], Just o <- [lookupS "old" r], Just nw <- [lookupS "new" r], let e = lookupA "expect" r]
-  _ -> Left "muts: not a table"
-
-parseLeds :: String -> Either String [LedgerEntry]
-parseLeds src = case parseToml src of
-  Left e -> Left e
-  Right (VTable tbl) -> Right [LedgerEntry k l s e | ("entry", VTable r) <- tbl, Just k <- [lookupS "key" r], Just l <- [lookupS "level" r], Just s <- [lookupS "statement" r], Just e <- [lookupS "evidence" r]]
-  _ -> Left "ledger: not a table"
-
-lookupS :: String -> [(String, Value)] -> Maybe String
-lookupS k r = case lookup k r of
-  Just (VString s) -> Just s
-  _ -> Nothing
-
-lookupA :: String -> [(String, Value)] -> [String]
-lookupA k r = case lookup k r of
-  Just (VArray xs) -> [s | VString s <- xs]
-  _ -> []
+readModel ids ledger authorities = do
+  idsDoc <- inFile "model/ids.toml" (parseToml ids)
+  ledgerDoc <- inFile "model/ledger.toml" (parseToml ledger)
+  authDoc <- inFile "model/authorities.toml" (parseToml authorities)
+  rows <- inFile "model/ids.toml" (traverse row (tables "id" idsDoc))
+  claims <- inFile "model/ledger.toml" (traverse claim (tables "claim" ledgerDoc))
+  auths <- inFile "model/authorities.toml" (traverse authority (tables "authority" authDoc))
+  pure (Model rows claims auths)
+  where
+    inFile f = either (\e -> Left (f <> ": " <> e)) Right
+    tables name doc = maybe [] id (lookup name (docArrays doc))
+    field k t = maybe (Left ("missing field " <> show k <> " in " <> show t)) Right (lookupString k t)
+    level t = field "level" t >>= \s -> maybe (Left ("unknown level " <> show s)) Right (parseLevel s)
+    row t =
+      Row <$> field "id" t <*> field "package" t <*> level t <*> field "claim" t <*> field "oracle" t
+        <*> pure (lookupStrings "authorities" t)
+    claim t =
+      Claim <$> field "key" t <*> level t <*> field "statement" t <*> field "evidence" t
+        <*> pure (lookupStrings "authorities" t)
+    authority t = Authority <$> field "key" t <*> field "cite" t

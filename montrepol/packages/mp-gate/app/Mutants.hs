@@ -48,16 +48,23 @@ runOne m = do
       (code, out, err) <-
         readProcessWithExitCode "cabal" ["test", "-v0", mPackage m] ""
           `finally` writeUtf8 (mFile m) original
-      let combined = out <> err
-          caught = code /= ExitSuccess && all (`isInfixOf` combined) (mExpect m)
-      putStrLn ((if caught then "CAUGHT " else "MISSED ") <> mName m)
+      let failed = nub [tag l | l <- lines (out <> err), "FAIL [" `isInfixOf` l]
+          caught = code /= ExitSuccess && all (`elem` failed) (mExpect m) && not (null (mExpect m))
+          detail
+            | not (null failed) = "failed: " <> unwords failed
+            | code /= ExitSuccess = "the build broke; no test caught it"
+            | otherwise = "every test passed"
+      putStrLn ((if caught then "CAUGHT " else "MISSED ") <> mName m <> "  (" <> detail <> ")")
       pure caught
+  where
+    tag l = takeWhile (/= ']') (drop 1 (dropWhile (/= '[') l))
 
 replaceOnce :: String -> String -> String -> String
-replaceOnce old new hay =
-  case break (old `isPrefixOf`) (tails hay) of
-    (pre, rest : _) -> take (length pre) hay <> new <> drop (length old) rest
-    _ -> hay
+replaceOnce old new s
+  | old `isPrefixOf` s = new <> drop (length old) s
+  | otherwise = case s of
+      (c : rest) -> c : replaceOnce old new rest
+      [] -> []
 
 readUtf8 :: FilePath -> IO String
 readUtf8 p = withFile p ReadMode (\h -> hSetEncoding h utf8 >> hGetContents' h)

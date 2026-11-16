@@ -173,6 +173,24 @@ runOne seed (Test i n body) = do
   putStrLn (maybe "  ok   " (const "  FAIL ") outcome <> "[" <> i <> "] " <> n)
   pure ((\e -> "[" <> i <> "] " <> n <> "\n      " <> e) <$> outcome)
 
+-- | Evaluate a property on @k@ generated cases; the first failure, described,
+-- or 'Nothing'. Pure, so the harness's own tests can run it.
+checkProperty :: Show a => Int -> Gen a -> (a -> Result) -> Word64 -> Maybe String
+checkProperty k g p seed = go 0 (mkSeed seed)
+  where
+    go c s
+      | c >= k = Nothing
+      | otherwise =
+          let (s1, s2) = splitSeed s
+              (x, _) = runGen g s1
+           in case p x of
+                Result [] -> go (c + 1) s2
+                Result es ->
+                  Just
+                    ( "case " <> show c <> " of " <> show k <> " (seed " <> show seed <> "): "
+                        <> show x <> "\n      " <> intercalate "; " es
+                    )
+
 -- | Run every test, print a line per test, exit non-zero if any failed.
 -- Pass @--seed N@ to reproduce a reported failure.
 runSuite :: String -> [Test] -> IO ()
@@ -192,15 +210,3 @@ runSuite name tests = do
       putStrLn ("\n" <> show (length fs) <> " of " <> show (length tests) <> " failed:")
       mapM_ (putStrLn . ("  " <>)) (reverse fs)
       exitFailure
-
--- | Run a property. Returns Nothing on success, or the failing case.
-checkProperty :: Show a => Int -> Gen a -> (a -> Result) -> Word64 -> Maybe String
-checkProperty k g p seed0 = go 0 (mkSeed seed0)
-  where
-    go c s
-      | c >= k = Nothing
-      | otherwise =
-          let (x, s') = runGen g s
-           in case p x of
-                Result [] -> go (c + 1) s'
-                Result es -> Just ("case " <> show c <> ": " <> show x <> "\n      " <> intercalate "; " es)
