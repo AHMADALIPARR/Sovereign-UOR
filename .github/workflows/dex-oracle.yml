@@ -1,0 +1,137 @@
+# Dual oracle: Dex re-computes values that the Scala kernel and
+# montrepol_checked compute, and the outputs must be byte-identical.
+# See docs/dex-oracle.md.
+name: dex-oracle
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: dex-oracle-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SCALA_VERSION: "3.5.2"
+  DEX_COMMIT: 25e2e389b90403ae2f8d67fb6d52f47d23c439ee
+  CASES: "200"
+
+jobs:
+  # First side: the repository's own implementations.
+  vectors:
+    name: Vectors (Scala Poly64, Haskell Bareiss)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install scala-cli
+        run: |
+          curl -fsSL https://github.com/VirtusLab/scala-cli/releases/latest/download/scala-cli-x86_64-pc-linux.gz \
+            | gunzip > /usr/local/bin/scala-cli
+          chmod +x /usr/local/bin/scala-cli
+      - uses: haskell-actions/setup@v2
+        with:
+          ghc-version: "9.10.1"
+      - name: Poly64 vectors from src/main/scala/uor/kernel
+        run: |
+          mkdir -p out
+          scala-cli run --server=false --scala ${{ env.SCALA_VERSION }} \
+            src/main/scala/uor/kernel dex/scala/Poly64Vectors.scala -- ${{ env.CASES }} > out/poly64-scala.txt
+          wc -l out/poly64-scala.txt
+      - name: Determinant vectors from montrepol_checked MP.Matrix.det (Bareiss)
+        run: |
+          mkdir -p /tmp/bv
+          ghc -Wall -Werror -O0 -outputdir /tmp/bv -o /tmp/bv/bareiss-vectors \
+            -imontrepol_checked/packages/mp-linalg/src \
+            -imontrepol_checked/packages/mp-check/src dex/haskell/BareissVectors.hs
+          /tmp/bv/bareiss-vectors ${{ env.CASES }} > out/det-haskell.txt
+          wc -l out/det-haskell.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oracle-vectors
+          path: out/
+          retention-days: 7
+
+  # Second side: Dex, built from the last upstream commit.
+  dex:
+    name: Dex (poly64.dx, det.dx) and diff
+    runs-on: ubuntu-24.04
+    needs: vectors
+    timeout-minutes: 300
+    container: ubuntu:22.04
+    steps:
+      - name: System packages (LLVM 12, as upstream Dex requires)
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          apt-get update -q
+          apt-get install -y -q --no-install-recommends \
+            ca-certificates curl git make gcc g++ xz-utils pkg-config \
+            llvm-12-dev clang-12 libpng-dev libgmp-dev zlib1g-dev libtinfo-dev \
+            libnuma-dev nodejs npm
+      - uses: actions/checkout@v4
+      - name: Fetch dex-lang at a fixed commit
+        run: |
+          git clone --filter=blob:none https://github.com/google-research/dex-lang.git /opt/dex-lang
+          git -C /opt/dex-lang checkout --quiet "$DEX_COMMIT"
+      - name: Install stack
+        run: |
+          curl -sSfL https://github.com/commercialhaskell/stack/releases/download/v2.15.7/stack-2.15.7-linux-x86_64.tar.gz \
+            | tar xz -C /tmp
+          install /tmp/stack-2.15.7-linux-x86_64/stack /usr/local/bin/stack
+          stack --version
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.stack
+            /opt/dex-lang/.stack-work
+          key: dex-${{ env.DEX_COMMIT }}-jammy-llvm12-v1
+      - name: Build dex
+        working-directory: /opt/dex-lang
+        run: |
+          export PATH=/usr/lib/llvm-12/bin:$PATH
+          # static/index.js is listed in dex.cabal data-files; it is the web
+          # notebook front end, compiled from static/index.ts.
+          npm install --no-save --prefix /tmp/tsc typescript@4.9.5
+          /tmp/tsc/node_modules/.bin/tsc --strict --lib es2015,dom static/index.ts
+          clang++-12 -fPIC -std=c++11 -fno-exceptions -fno-rtti -pthread -DDEX_LIVE \
+            -c -emit-llvm src/lib/dexrt.cpp -o src/lib/dexrt.bc
+          stack --allow-different-user setup
+          stack --allow-different-user build --fast
+      - uses: actions/download-artifact@v4
+        with:
+          name: oracle-vectors
+          path: out
+      - name: Run Dex and compare
+        run: |
+          run_dex() {
+            (cd /opt/dex-lang && stack --allow-different-user exec dex -- --lib-path lib script "$GITHUB_WORKSPACE/dex/$1") \
+              | tee "out/$1.log" | sed -n 's/^> \(case .*\)$/\1/p'
+          }
+          run_dex poly64.dx > out/poly64-dex.txt
+          run_dex det.dx > out/det-dex.txt
+          status=0
+          for pair in "poly64-scala poly64-dex" "det-haskell det-dex"; do
+            set -- $pair
+            total=$(wc -l < "out/$1.txt")
+            same=$(paste -d '\n' "out/$1.txt" "out/$2.txt" | paste - - -d '\t' | awk -F '\t' '$1 == $2' | wc -l)
+            echo "$1 vs $2: $same of $total lines identical"
+            if [ "$total" -eq 0 ] || ! cmp -s "out/$1.txt" "out/$2.txt"; then
+              diff "out/$1.txt" "out/$2.txt" | head -40
+              status=1
+            fi
+          done
+          exit $status
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oracle-outputs
+          path: out/
+          retention-days: 7
