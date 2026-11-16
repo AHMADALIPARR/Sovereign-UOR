@@ -1,0 +1,243 @@
+# The previous version is kept in docs/workflows-original/ci.yml.txt.
+# The montrepol jobs follow montrepol/.github/workflows/ci.yml, run from the
+# montrepol/ subdirectory.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SCALA_VERSION: "3.5.2"
+
+jobs:
+  # ------------------------------------------------------------------
+  # Scala: pure kernel + munit
+  # ------------------------------------------------------------------
+  scala-test:
+    name: Scala Compile & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install scala-cli
+        run: |
+          curl -fsSL https://github.com/VirtusLab/scala-cli/releases/latest/download/scala-cli-x86_64-pc-linux.gz \
+            | gunzip > /usr/local/bin/scala-cli
+          chmod +x /usr/local/bin/scala-cli
+      - name: Compile kernel
+        run: |
+          scala-cli compile --scala ${{ env.SCALA_VERSION }} \
+            src/main/scala/uor/kernel/U64.scala \
+            src/main/scala/uor/kernel/Poly64.scala
+      - name: Unit tests
+        run: |
+          scala-cli test --scala ${{ env.SCALA_VERSION }} \
+            --test-only uor.kernel.Poly64Test \
+            src/main/scala/uor/kernel \
+            src/test/scala/uor/kernel/Poly64Test.scala
+
+  # ------------------------------------------------------------------
+  # Scala: GraalVM native shared library (non-blocking)
+  # ------------------------------------------------------------------
+  native-image:
+    name: Native Image (libuor)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    needs: scala-test
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: "21"
+          distribution: graalvm
+          components: "native-image"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          native-image-job-reports: "true"
+      - name: Install scala-cli
+        run: |
+          curl -fsSL https://github.com/VirtusLab/scala-cli/releases/latest/download/scala-cli-x86_64-pc-linux.gz \
+            | gunzip > /usr/local/bin/scala-cli
+          chmod +x /usr/local/bin/scala-cli
+      - name: Compile
+        run: |
+          mkdir -p build
+          scala-cli --power compile --scala ${{ env.SCALA_VERSION }} --server=false -d build \
+            src/main/scala/uor/kernel/U64.scala \
+            src/main/scala/uor/kernel/Poly64.scala \
+            src/main/scala/uor/ffi/UorExports.scala
+      - name: native-image --shared
+        run: |
+          native-image --shared -cp build -H:Name=libuor -O2 --no-fallback \
+            -H:+ReportExceptionStackTraces \
+            --initialize-at-build-time=uor \
+            --initialize-at-build-time=scala.runtime \
+            --initialize-at-build-time=java.lang \
+            --initialize-at-build-time=java.security \
+            -H:+AllowIncompleteClasspath || echo "native-image failed (non-blocking)"
+      - name: Verify
+        if: success()
+        run: |
+          ls -lh libuor* 2>/dev/null || true
+          file libuor.so || true
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: libuor-linux-x86_64
+          path: |
+            libuor.so
+            libuor.h
+            graal_isolate*.h
+          if-no-files-found: warn
+          retention-days: 14
+
+  # ------------------------------------------------------------------
+  # montrepol: Cabal build, test, gate (required)
+  # ------------------------------------------------------------------
+  vv:
+    name: montrepol build, test, gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: montrepol
+    steps:
+      - uses: actions/checkout@v4
+      - uses: haskell-actions/setup@v2
+        id: setup
+        with:
+          ghc-version: "9.10.1"
+          cabal-version: "3.12.1.0"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ${{ steps.setup.outputs.cabal-store }}
+            montrepol/dist-newstyle
+          key: ${{ runner.os }}-ghc-9.10.1-montrepol-${{ hashFiles('montrepol/cabal.project', 'montrepol/packages/*/*.cabal') }}
+      # The project uses no package repository (active-repositories: :none),
+      # but cabal 3.12 still wants an index file to exist.
+      - run: cabal update
+      - run: cabal build all
+      - run: cabal test all --test-show-details=direct
+      - run: cabal run mp-gate
+      # CONFORMANCE.md must already be what the model generates (R1); this
+      # also fails if `write` would change anything.
+      - run: cabal run mp-gate -- write && git diff --exit-code CONFORMANCE.md
+
+  # ------------------------------------------------------------------
+  # montrepol: Agda proofs (required)
+  # ------------------------------------------------------------------
+  formal:
+    name: montrepol Agda proofs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: montrepol
+    steps:
+      - uses: actions/checkout@v4
+      # Agda 2.6.3, the Ubuntu 24.04 package. No standard library is used.
+      - run: sudo apt-get update && sudo apt-get install -y agda-bin
+      - run: agda --version
+      - run: agda --no-libraries -i formal formal/Everything.agda
+        env:
+          LC_ALL: C.UTF-8
+
+  # ------------------------------------------------------------------
+  # montrepol: Liquid Haskell with Z3 (required)
+  # ------------------------------------------------------------------
+  liquid:
+    name: montrepol Liquid Haskell
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: montrepol
+    steps:
+      - uses: actions/checkout@v4
+      - uses: haskell-actions/setup@v2
+        id: setup
+        with:
+          ghc-version: "9.10.1"
+          cabal-version: "3.12.1.0"
+      # Z3 4.8.12, the Ubuntu 24.04 package.
+      - run: sudo apt-get update && sudo apt-get install -y z3
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ${{ steps.setup.outputs.cabal-store }}
+            montrepol/liquid/dist-newstyle
+          key: ${{ runner.os }}-liquid-${{ hashFiles('montrepol/liquid/cabal.project', 'montrepol/liquid/*.cabal') }}
+      # This layer alone reaches Hackage; liquid/cabal.project pins its
+      # index-state.
+      - run: cabal update
+      - run: cabal build all
+        working-directory: montrepol/liquid
+
+  # ------------------------------------------------------------------
+  # montrepol: Dex quine checks (required)
+  # ------------------------------------------------------------------
+  dex:
+    name: montrepol Dex
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    defaults:
+      run:
+        working-directory: montrepol
+    steps:
+      - uses: actions/checkout@v4
+      # The first run builds LLVM 12's Dex from pinned sources and takes a
+      # long time; later runs reuse the toolchain while dex/build.sh is
+      # unchanged.
+      # The scripts are run with bash because they are committed without the
+      # executable bit.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.stack
+            montrepol/dex/.toolchain
+          key: ${{ runner.os }}-dex-${{ hashFiles('montrepol/dex/build.sh') }}
+      # Headers dex-lang needs to build its runtime (dexrt.cpp includes png.h).
+      - run: sudo apt-get update && sudo apt-get install -y libpng-dev libgmp-dev zlib1g-dev libtinfo-dev libnuma-dev pkg-config
+      - run: bash dex/build.sh
+      - run: bash dex/check.sh
+
+  # ------------------------------------------------------------------
+  # Final gate (Scala + montrepol required)
+  # ------------------------------------------------------------------
+  status:
+    name: CI Status
+    runs-on: ubuntu-latest
+    needs: [scala-test, vv, formal, liquid, dex]
+    if: always()
+    steps:
+      - name: Aggregate
+        run: |
+          echo "Scala tests → ${{ needs.scala-test.result }}"
+          echo "montrepol build, test, gate → ${{ needs.vv.result }}"
+          echo "montrepol Agda proofs → ${{ needs.formal.result }}"
+          echo "montrepol Liquid Haskell → ${{ needs.liquid.result }}"
+          echo "montrepol Dex → ${{ needs.dex.result }}"
+          fail=0
+          [[ "${{ needs.scala-test.result }}" == success ]] || fail=1
+          [[ "${{ needs.vv.result }}" == success ]] || fail=1
+          [[ "${{ needs.formal.result }}" == success ]] || fail=1
+          [[ "${{ needs.liquid.result }}" == success ]] || fail=1
+          [[ "${{ needs.dex.result }}" == success ]] || fail=1
+          if [[ $fail -ne 0 ]]; then
+            echo "❌ a required job failed"
+            exit 1
+          fi
+          echo "✅ Scala and montrepol passed"
