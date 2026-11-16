@@ -20,11 +20,48 @@ in the repository defines an `R`-number.
 | R5 | Everything is total: no partial Prelude functions (`head`, `fromJust`, `maximum`, `!!`, `error`, ...), nothing unsafe, warnings are errors. | `mp-gate`, GHC `-Wall -Werror` |
 | R6 | Nothing arrives from outside GHC and this repository. Boot packages carry both version bounds; every package directory is in `cabal.project`; no package repository is enabled. | `mp-gate`, `active-repositories: :none` |
 
-## Changing something
+## Adding a capability
 
-1. Edit the model if the claim changes. Never edit `CONFORMANCE.md` by hand.
-2. Add or change the test that carries the ID.
-3. Run `cabal run mp-gate -- write` and commit the regenerated conformance.
-4. If you plant a defect, add it to `model/mutants.toml` and confirm the honesty job catches it.
+In this order, because the order is the discipline:
 
-The gate is the reviewer. A change that leaves the gate red does not land.
+1. A row in `model/ids.toml`, with its level, its claim and what it is checked
+   against.
+2. A test tagged with the ID (`unit "XX-00" ...`, `prop "XX-00" ...`) that
+   fails without the implementation.
+3. The implementation.
+4. At least one entry in `model/mutants.toml`: a defect planted in the
+   implementation and the IDs that must catch it.
+5. `cabal run mp-gate -- write`, then `cabal test all`, `cabal run mp-gate` and
+   `cabal run mp-gate -- mutants`.
+
+## Choosing an oracle
+
+A test is only as good as what it compares against. Prefer, in order:
+
+1. An independent algorithm for the same quantity (Leibniz for Bareiss, the
+   definition for Strassen, Floyd–Warshall for min-plus powers, brute force for
+   Berlekamp–Massey).
+2. A theorem that does not depend on the code under test (von Staudt–Clausen,
+   `e^psi(x) = lcm(1..x)`, Euler's formula for `zeta(2k)`).
+3. A published table, cited in `model/authorities.toml` and committed under
+   `oracles/` when it is data.
+
+Never compare a function with itself, and never let a table be an input and
+its own check.
+
+## Writing a gate
+
+A gate that cannot fail is worse than no gate, because it reads as evidence.
+Before relying on one, plant the defect it exists to catch and confirm it
+fires. For the rules that is `mp-gate-test` (GT-01..GT-07). For the
+mathematics it is `model/mutants.toml`. A mutant that only breaks the build
+does not count as caught.
+
+A gate that reads source must survive reading its own. `MP.Gate.Scan` spells
+its forbidden names in halves for that reason; exempting the file would leave a
+hole exactly where a defect parked in the gate would sit.
+
+## Comments
+
+Explain *why*, not *what*. A comment earns its place by recording why a
+decision went one way when it could plausibly have gone another.

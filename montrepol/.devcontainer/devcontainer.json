@@ -1,13 +1,17 @@
 {
   "name": "montrepol",
-  "image": "haskell:9.10.1",
-  "features": {
-    "ghcr.io/devcontainers/features/common-utils:2": {}
-  },
-  "postCreateCommand": "cabal update || true",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
   "customizations": {
     "vscode": {
-      "extensions": ["haskell.haskell"]
+      "extensions": ["haskell.haskell", "anthropic.claude-code"],
+      "settings": {
+        "search.exclude": { "**/dist-newstyle": true },
+        "files.watcherExclude": { "**/dist-newstyle/**": true }
+      }
     }
-  }
+  },
+  "remoteEnv": {
+    "PATH": "/home/vscode/.ghcup/bin:${containerEnv:PATH}"
+  },
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y libgmp-dev && curl -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 BOOTSTRAP_HASKELL_GHC_VERSION=9.10.1 BOOTSTRAP_HASKELL_CABAL_VERSION=3.12.1.0 BOOTSTRAP_HASKELL_INSTALL_NO_STACK=1 sh"
 }
