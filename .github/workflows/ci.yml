@@ -202,14 +202,16 @@ jobs:
       # The first run builds LLVM 12's Dex from pinned sources and takes a
       # long time; later runs reuse the toolchain while dex/build.sh is
       # unchanged.
+      # The scripts are run with bash because they are committed without the
+      # executable bit.
       - uses: actions/cache@v4
         with:
           path: |
             ~/.stack
             montrepol/dex/.toolchain
           key: ${{ runner.os }}-dex-${{ hashFiles('montrepol/dex/build.sh') }}
-      - run: ./dex/build.sh
-      - run: ./dex/check.sh
+      - run: bash dex/build.sh
+      - run: bash dex/check.sh
 
   # ------------------------------------------------------------------
   # Final gate (Scala + montrepol required)

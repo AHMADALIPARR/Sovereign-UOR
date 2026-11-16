@@ -41,14 +41,15 @@ jobs:
           path: montrepol/liquid/dist-newstyle
           key: ${{ runner.os }}-liquid-${{ hashFiles('montrepol/liquid/cabal.project', 'montrepol/liquid/*.cabal') }}
       - run: cabal update
-      # Dex mutants are replayed with the pinned Dex toolchain.
+      # Dex mutants are replayed with the pinned Dex toolchain. build.sh is run
+      # with bash because it is committed without the executable bit.
       - uses: actions/cache@v4
         with:
           path: |
             ~/.stack
             montrepol/dex/.toolchain
           key: ${{ runner.os }}-dex-${{ hashFiles('montrepol/dex/build.sh') }}
-      - run: ./dex/build.sh
+      - run: bash dex/build.sh
       - run: cabal build all
       - run: cabal run mp-gate -- mutants
       # The mutant run restores every file it touches; prove the tree is clean.
