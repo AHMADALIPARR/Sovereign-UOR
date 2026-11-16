@@ -1,3 +1,7 @@
+-- SPDX-License-Identifier: AGPL-3.0-only
+-- Also licensed under the SnapKitty Opaque License (LicenseRef-SnapKitty-Opaque-1.0); see README.md.
+-- Copyright (C) 2026 Ahmad Parr
+
 -- | Exact Bernoulli numbers by the recurrence from the definition of the
 -- generating function, so the denominators are the ones von Staudt-Clausen
 -- predicts (AN-03).
