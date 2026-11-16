@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Also licensed under the SnapKitty Opaque License (LicenseRef-SnapKitty-Opaque-1.0); see README.md.
+# Copyright (C) 2026 Ahmad Parr
+
 # Planted defects. Each mutant must be caught by the tests named in `expect`.
 # The honesty workflow applies every mutant in turn, runs the package's test
 # suite, requires that every named ID reports FAIL, and that the tree is
