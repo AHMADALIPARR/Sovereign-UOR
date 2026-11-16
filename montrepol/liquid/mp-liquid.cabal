@@ -1,0 +1,17 @@
+cabal-version:      3.0
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+name:               mp-liquid
+version:            0.1.0.0
+synopsis:           Liquid Haskell refinement checks, run with Z3, outside the core build.
+license:            AGPL-3.0-or-later
+build-type:         Simple
+
+library
+  -- MP.Lambda.Simple is the core module itself, compiled here a second time
+  -- with the plugin; its refinements are comments in packages/mp-lambda.
+  exposed-modules:  MP.Liquid.Smoke
+                    MP.Lambda.Simple
+  hs-source-dirs:   src ../packages/mp-lambda/src
+  build-depends:    base >=4.20 && <4.21, liquidhaskell >=0.9.10.1 && <0.9.11
+  ghc-options:      -fplugin=LiquidHaskell
+  default-language: GHC2021

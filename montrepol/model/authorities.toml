@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # model/authorities.toml --- sources this repository reproduces facts from.
 #
 # Every entry must be cited by at least one ID or ledger row (R2), and every

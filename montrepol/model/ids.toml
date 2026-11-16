@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # model/ids.toml --- the conformance ID register.
 #
 # Every claim with a test, in one place. CONFORMANCE.md is generated from
@@ -290,7 +291,7 @@ oracle = "Planted defects and planted near-misses."
 id = "GT-06"
 package = "mp-gate"
 level = "build"
-claim = "R6 fires on an outside dependency, an unbounded boot dependency, an unlisted package and a re-enabled package repository."
+claim = "R6 fires on an outside dependency, an unbounded boot dependency, an unlisted package, a re-enabled package repository, and a source or .cabal file without the SPDX header."
 oracle = "Planted defects."
 
 [[id]]
@@ -299,3 +300,185 @@ package = "mp-gate"
 level = "build"
 claim = "The TOML reader parses the subset the model uses and rejects what it cannot read."
 oracle = "Hand-written documents."
+
+[[id]]
+id = "GT-08"
+package = "mp-gate"
+level = "build"
+claim = "The formal rules fire on a proved claim citing a missing file or an undefined lemma, an ID at level proved, a postulate, a module without --safe, a module Everything.agda does not import, and an Agda file without the SPDX header; and asserting words are allowed at level proved."
+oracle = "Planted defects in a synthetic formal/ tree."
+
+[[id]]
+id = "HC-01"
+package = "mp-hcalc"
+level = "build"
+claim = "DPLL agrees with brute force on random CNF; its models satisfy the clauses and its refutations replay by resolution."
+oracle = "Truth tables over up to 7 variables."
+
+[[id]]
+id = "HC-02"
+package = "mp-hcalc"
+level = "build"
+claim = "The pigeonhole formula PHP(3,2) is refuted with a replaying refutation, and no refutation is accepted for a satisfiable CNF."
+oracle = "Random refutation trees against satisfiable CNFs."
+
+[[id]]
+id = "HC-03"
+package = "mp-hcalc"
+level = "build"
+claim = "Fourier-Motzkin models satisfy every constraint, its Farkas certificates check, and it never calls infeasible a system with a grid solution."
+oracle = "Exact evaluation; a grid of 17^3 rational points."
+
+[[id]]
+id = "HC-04"
+package = "mp-hcalc"
+level = "build"
+claim = "No Farkas certificate is accepted for a feasible system."
+oracle = "Random multipliers of either sign against systems with a grid solution, and a negative-weight forgery."
+
+[[id]]
+id = "HC-05"
+package = "mp-hcalc"
+level = "build"
+claim = "DPLL(T) models satisfy the formula, its unsatisfiability certificates check, and it never calls unsatisfiable a formula with a grid model."
+oracle = "Direct evaluation of the formula; a grid over two rationals and two propositions."
+
+[[id]]
+id = "HC-06"
+package = "mp-hcalc"
+level = "build"
+claim = "Transitivity, antisymmetry, a bounded polytope and excluded middle are proved valid with checked certificates; x < y ==> x + 1 <= y is refuted over Q with a checked counter-model."
+oracle = "Hand-written formulas."
+
+[[id]]
+id = "HC-07"
+package = "mp-hcalc"
+level = "build"
+claim = "The Tseitin encoding is equisatisfiable with the propositional formula."
+oracle = "Truth tables over three propositions."
+
+[[id]]
+id = "HC-08"
+package = "mp-hcalc"
+level = "build"
+claim = "An unsatisfiability certificate is rejected for a satisfiable formula."
+oracle = "Certificates of f /\\ not f, offered for f."
+
+[[id]]
+id = "LM-01"
+package = "mp-lambda"
+level = "build"
+claim = "Generated terms of the simply typed lambda calculus have the type they were generated at."
+oracle = "The type checker."
+
+[[id]]
+id = "LM-02"
+package = "mp-lambda"
+level = "build"
+claim = "Progress: every closed well-typed term on an evaluation trace is a value or takes a step."
+oracle = "Random closed well-typed terms."
+
+[[id]]
+id = "LM-03"
+package = "mp-lambda"
+level = "build"
+claim = "Preservation: every step of evaluation keeps the type."
+oracle = "Random closed well-typed terms."
+
+[[id]]
+id = "LM-04"
+package = "mp-lambda"
+level = "build"
+claim = "Evaluation of a closed well-typed term reaches a value."
+oracle = "Random terms, 10000 steps of fuel."
+
+[[id]]
+id = "LM-05"
+package = "mp-lambda"
+level = "build"
+claim = "Substitution preserves types: G, x:S |- t : T and G |- s : S give G |- t[x := s] : T, for open s under binders."
+oracle = "Random contexts, terms and substitutions."
+
+[[id]]
+id = "LM-06"
+package = "mp-lambda"
+level = "build"
+claim = "Ill-typed terms are rejected, including self-application."
+oracle = "Hand-written terms."
+
+[[id]]
+id = "LM-07"
+package = "mp-lambda"
+level = "build"
+claim = "abs, max, clamp, addNat and absTwice are accepted by the refinement checker, and on inputs meeting their preconditions their outputs meet their postconditions."
+oracle = "Running each program on random integers."
+
+[[id]]
+id = "LM-08"
+package = "mp-lambda"
+level = "build"
+claim = "Wrong specifications are rejected, each with a counter-model that falsifies its verification condition."
+oracle = "Direct evaluation of the VC at the counter-model."
+
+[[id]]
+id = "LM-09"
+package = "mp-lambda"
+level = "build"
+claim = "Substitution into refinement types avoids capture, and shadowing and reserved names are rejected."
+oracle = "A program whose check needs a capture-avoiding rename."
+
+[[id]]
+id = "LM-10"
+package = "mp-lambda"
+level = "build"
+claim = "A specification valid over the integers but not the rationals is rejected, with a non-integral counter-model."
+oracle = "x < y ==> x + 1 <= y."
+
+[[id]]
+id = "GT-09"
+package = "mp-gate"
+level = "build"
+claim = "The Liquid Haskell exemption is one-directional: liquid sources without their own cabal.project, a root project that includes them, a core package depending on liquidhaskell, and an assumed or lazy refinement all fire."
+oracle = "Planted defects in a synthetic liquid/ tree."
+
+[[id]]
+id = "GT-10"
+package = "mp-gate"
+level = "build"
+claim = "A refined ledger claim must name a core source, functions with Liquid Haskell specs in it, and a module the liquid build compiles; each defect fires."
+oracle = "Planted defects against a synthetic core module and liquid cabal file."
+
+[[id]]
+id = "GT-11"
+package = "mp-gate"
+level = "build"
+claim = "Dex checks are tied to the register: a dex ID with no tagged check, a check tagged with an unregistered ID, and a Dex file without the SPDX header each fire."
+oracle = "Planted defects in a synthetic dex/ tree."
+
+[[id]]
+id = "DX-01"
+package = "dex"
+level = "build"
+claim = "In Dex, integer matrices typed by their index sets multiply to the hand-computed products, square and 2x3 by 3x2."
+oracle = "Products worked by hand."
+
+[[id]]
+id = "DX-02"
+package = "dex"
+level = "build"
+claim = "In Dex, the integer product is associative and distributes over addition on a fixed example."
+oracle = "The two sides of each law, computed separately."
+
+[[id]]
+id = "DX-03"
+package = "dex"
+level = "build"
+claim = "In Dex, Strassen's seven products recombine into the product given by the definition, on three integer examples."
+oracle = "The definition of the product, and one hand-computed product."
+
+[[id]]
+id = "DX-04"
+package = "dex"
+level = "build"
+claim = "In Dex, Kish's effective sample size of [3, 3, 3] is at least 3 and not at least 4, decided exactly in integers."
+oracle = "(sum w)^2 = 81 against k * sum w^2 = 27k."
