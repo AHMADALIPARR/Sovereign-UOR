@@ -6,8 +6,8 @@ and test them, and what was found when they were checked. Line numbers ("line 12
 refer to the file named in the enclosing heading or paragraph, in that commit. All numbers were measured on
 the build machine (GHC 9.10.1, cabal 3.12.1.0, Scala 3.5.2 on Java 21,
 Dex at commit `25e2e389`) or read from GitHub Actions logs. The detailed
-claim-by-claim audit is in [README-audit.md](README-audit.md); this document
-summarises it where a file is affected and does not repeat its tables.
+claim-by-claim audit was kept in `docs/README-audit.md`, which has since been
+deleted; this document summarises it where a file is affected.
 
 ## 1. Overview
 
@@ -33,16 +33,16 @@ by line with them.
 
 Nothing in the original files was edited. Corrections live beside the
 originals: the Haskell tree as `montrepol_checked/`, the zeta oracle as
-`montrepol/oracles/zeta-zeros-odlyzko_checked.txt`, the old README as
-`docs/README-original.md`, and the old workflows under
-`docs/workflows-original/`.
+`montrepol/oracles/zeta-zeros-odlyzko_checked.txt`. The old README
+(`docs/README-original.md`) and the old workflows (`docs/workflows-original/`)
+were kept too, and have since been deleted.
 
 ## 2. Root files
 
 **`README.md`** (103 lines). The overview: what each tree is, the measured
 state, the layout, build commands, the document index (including the per-file
 document listed in section 9) and the license line. It replaced the original
-README, which is kept verbatim in `docs/README-original.md`.
+README, whose verbatim copy in `docs/README-original.md` has since been deleted.
 
 **`LICENSE`** (661 lines). The GNU Affero General Public License version 3,
 fetched from gnu.org. It is byte-identical to `montrepol/LICENSE` and ends
@@ -177,8 +177,8 @@ The six `.cabal` files all declare `version: 0.1.0.0` (line 3) and depend on
 | `mp-analytic` (28 lines) | base, array | + mp-check, mp-analytic; an executable depends on base and mp-analytic | library imports `MP.Algebra` (`Bernoulli.hs:8`, `Primes.hs:10`) without `mp-linalg` |
 | `mp-gate` (30 lines) | base | executable adds directory, filepath, process | none in the cabal file |
 
-`montrepol/.devcontainer/devcontainer.json` (13 lines) uses the
-`haskell:9.10.1` image and runs `cabal update || true` after creation.
+`montrepol/.devcontainer/devcontainer.json` (13 lines, since deleted) used the
+`haskell:9.10.1` image and ran `cabal update || true` after creation.
 `montrepol/.gitignore` (11 lines) ignores `dist-newstyle/` and similar.
 
 ### 4.2 Documents inside the tree
@@ -190,8 +190,8 @@ The six `.cabal` files all declare `version: 0.1.0.0` (line 3) and depend on
   nothing compiles. The packages table (lines 19-26) describes "matrices with dimensions in the
   type" (line 22), which `Matrix.hs` does not have, and names Floyd–Warshall
   and OEIS as oracles (lines 22 and 25), which no test uses.
-- `montrepol/AGENTS.md` (30 lines). Defines rules R1-R6 (lines 14-21) and the
-  change procedure (lines 25-28).
+- `montrepol/AGENTS.md` (30 lines, since deleted). Defined rules R1-R6 (lines
+  14-21) and the change procedure (lines 25-28).
 - `montrepol/VERIFICATION.md` (14 lines). How each rule is enforced (lines
   5-12) and what the honesty workflow does (line 14). R1 there says the gate
   "fails if the committed file differs"; the original `Rules.hs` never reads
@@ -391,7 +391,7 @@ connection polynomial 1 − x − x² (line 22) and the zero sequence (line 24).
 `mp-lie`, `mp-analytic` and `mp-gate`. Running the corrected gate's rules over
 the original tree reports 17 violations: R2 for `steele-2014`, R3 for the
 untested `AN-06`, and 15 R5 uses of partial functions (listed in
-`README-audit.md`, section 3).
+section 3 of `README-audit.md`, since deleted).
 
 ## 5. The corrected Haskell tree (`montrepol_checked/`)
 
@@ -703,8 +703,8 @@ under a `...-done` key (111, 133) and a failed or cancelled one under a key
 with the run id (140), runs both `.dx` files (145-148), and diffs the outputs
 (160). The first full build took 10 min 17 s in run 5.
 
-The originals are kept as `docs/workflows-original/ci.yml.txt` (162 lines)
-and `honesty.yml.txt` (34 lines). The old Cabal job built `montrepol/`
+The originals were kept as `docs/workflows-original/ci.yml.txt` (162 lines)
+and `honesty.yml.txt` (34 lines), since deleted. The old Cabal job built `montrepol/`
 directly, and the old honesty job ran the mutant replay that does not
 compile.
 
@@ -730,12 +730,9 @@ outside it reads `montrepol/oracles/zeta-zeros-odlyzko.txt`.
 
 | File | Lines | Content |
 |---|---|---|
-| `README-audit.md` | 262 | Claim-by-claim audit of the original README; truncation, fabrication, test, mutant and CI findings |
-| `README-original.md` | 287 | The README at commit `5db9b38`, verbatim |
 | `dex-oracle.md` | 113 | The Dex oracle: what is compared, measured agreement, Dex quirks, build and run commands |
 | `REPO.md` | — | This document |
 | `files/src/main/scala/uor/kernel/Poly64.scala.md` | 926 | Detailed walkthrough of `Poly64.scala` (7,527 words), written before the per-file plan was dropped |
-| `workflows-original/ci.yml.txt`, `honesty.yml.txt` | 162, 34 | The workflows before the CI fix |
 
 ## 10. Build, run and test commands
 
@@ -786,15 +783,15 @@ file marked "same" is byte-identical to its counterpart in `montrepol/`.
 | `dex/haskell/BareissVectors.hs` | 50 | 6 |
 | `dex/poly64.dx` | 113 | 6 |
 | `dex/scala/Poly64Vectors.scala` | 49 | 6 |
-| `docs/README-audit.md` | 262 | 9 |
-| `docs/README-original.md` | 287 | 9 |
+| `docs/README-audit.md` (since deleted) | 262 | 9 |
+| `docs/README-original.md` (since deleted) | 287 | 9 |
 | `docs/dex-oracle.md` | 113 | 9 |
 | `docs/files/src/main/scala/uor/kernel/Poly64.scala.md` | 926 | 9 |
-| `docs/workflows-original/ci.yml.txt` | 162 | 9 |
-| `docs/workflows-original/honesty.yml.txt` | 34 | 9 |
-| `montrepol/.devcontainer/devcontainer.json` | 13 | 4.1 |
+| `docs/workflows-original/ci.yml.txt` (since deleted) | 162 | 9 |
+| `docs/workflows-original/honesty.yml.txt` (since deleted) | 34 | 9 |
+| `montrepol/.devcontainer/devcontainer.json` (since deleted) | 13 | 4.1 |
 | `montrepol/.gitignore` | 11 | 4.1 |
-| `montrepol/AGENTS.md` | 30 | 4.2 |
+| `montrepol/AGENTS.md` (since deleted) | 30 | 4.2 |
 | `montrepol/CONFORMANCE.md` | 77 | 4.2 |
 | `montrepol/LICENSE` | 661 | 4.2 |
 | `montrepol/LICENSES/UOR-template-Apache-2.0.txt` | 176 | 4.2 |

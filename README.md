@@ -78,14 +78,11 @@ them:
 | `.github/workflows/dex-oracle.yml:13-14, 21-22, 60-65` | `montrepol_checked` | Path filters and the determinant step point at `montrepol_checked`. |
 | `.github/workflows/ci.yml:105-106, 138-139` | the fabricated tree | Comments say `montrepol/` "does not compile" and is "expected to fail". On `ee9176b` the job built it successfully (CI run 71). |
 | `.github/workflows/honesty.yml` | `montrepol_checked` | Replays `montrepol_checked`'s 10 mutants, not the author's 13. |
-| `docs/README-audit.md` | the fabricated tree | Every finding about `montrepol/` (build failures, 426 wrong zeta rows, "171", "39", "13" called unproduced, wrong tests, missing names) describes the fabricated files. Its Scala findings (section 2 on `UorExports`) still hold. |
 | `docs/REPO.md` | the fabricated tree | Sections 4, 5, 8 and the `montrepol` rows of its appendix. Its Scala, Dex-Poly64 and workflow sections still hold. |
 | `docs/dex-oracle.md` | `montrepol_checked` | Accurate about what it measured, but the determinant side is `montrepol_checked`'s code. |
 
 Not stale: `src/`, `dex/poly64.dx`, `dex/scala/Poly64Vectors.scala`,
-`dex/det.dx` (it implements Leibniz on its own), `LICENSE`,
-`docs/README-original.md` (a verbatim historical copy),
-`docs/workflows-original/`, and
+`dex/det.dx` (it implements Leibniz on its own), `LICENSE`, and
 `docs/files/src/main/scala/uor/kernel/Poly64.scala.md`.
 
 ## 3. The Scala tree (`src/`)
@@ -168,8 +165,7 @@ The transform computes an element of the dihedral group of order 2^65 acting
 on Z/2^64 (a reflection `x ↦ ~x = −1 − x` optionally followed by a
 translation). `len` is narrowed with `.toInt` (lines 28 and 50), so buffers
 of 2^31 words or more are not handled. The original README listed three
-exports with different argument names (`stride`, `direction`); there are four
-(see `docs/README-audit.md`, section 2, whose Scala findings still hold). The file is compiled only in the non-blocking
+exports with different argument names (`stride`, `direction`); there are four. The file is compiled only in the non-blocking
 `native-image` job of `ci.yml`, which succeeded in CI run 52; no test calls
 these functions.
 
@@ -203,8 +199,9 @@ Restored from the author's zip. Everything in this section was re-read at
   `mp-analytic-report`. `mp-gate` (30) has a library on base only and an
   executable adding `directory`, `filepath` and `process`.
 - `.gitignore` (11 lines) ignores `dist-newstyle/` and editor files.
-- `.devcontainer/devcontainer.json` (17 lines): Ubuntu 24.04 base image, the
-  Haskell VS Code extension, and a `postCreateCommand` that installs
+- `.devcontainer/devcontainer.json` (17 lines) has since been deleted; no
+  workflow, script or gate used it. It held an Ubuntu 24.04 base image, the
+  Haskell VS Code extension, and a `postCreateCommand` that installed
   `libgmp-dev` and GHC 9.10.1 with cabal 3.12.1.0 through ghcup (line 16).
 
 ### 4.2 The author's own documents
@@ -219,11 +216,10 @@ Restored from the author's zip. Everything in this section was re-read at
   `[2^32, 2^32]` accepted `min_keff = 3` (46-50), now LA-08; and a comment
   claiming `tr(G)^2 >= 2 ||G||_F^2` for 2x2 PSD matrices, which holds only for
   multiples of the identity (51-56), now LA-10. Both tests pass.
-- `AGENTS.md` (67 lines). Rules R1-R6 (14-21), the order for adding a
-  capability (23-35: register row, failing test, implementation, mutant,
-  regenerate), how to choose an oracle (37-50: an independent algorithm,
-  then a theorem, then a published table; never a function against itself),
-  and why the scanner spells forbidden names in halves (60-62).
+- `AGENTS.md` (67 lines) has since been deleted. It set out rules R1-R6,
+  the order for adding a capability, how to choose an oracle, and why the
+  scanner spells forbidden names in halves. `VERIFICATION.md` still lists
+  what each rule catches.
 - `VERIFICATION.md` (77 lines). What each command discharges (5-11), the
   planted rule violations the gate's own tests use (13-26), two real
   violations the gate found on its first run (`maximum` in `MP.Matrix` and in
@@ -648,20 +644,13 @@ Scala kernel, or `montrepol_checked`'s `mp-linalg` or `mp-check` change
 (140), runs both `.dx` files and diffs the outputs (145-160). The first full
 Dex build took 10 min 17 s in run 5; run 5 was green.
 
-`docs/workflows-original/ci.yml.txt` (162 lines) and `honesty.yml.txt`
-(34 lines) are the root workflows as they were before they were rewritten.
-
 ## 8. Documents (`docs/`)
 
 | File | Lines | What it is | Status |
 |---|---|---|---|
-| [`docs/README-audit.md`](docs/README-audit.md) | 262 | Claim-by-claim audit of the previous README and of `montrepol/` | Stale for everything about `montrepol/`; its Scala findings hold |
 | [`docs/REPO.md`](docs/REPO.md) | 884 | Earlier file-by-file description of the repository at `67948e5` | Stale in sections 4, 5, 8 and the montrepol rows of its appendix |
-| [`docs/README-original.md`](docs/README-original.md) | 287 | The top-level README as it was at commit `5db9b38`, verbatim | Historical copy |
 | [`docs/dex-oracle.md`](docs/dex-oracle.md) | 113 | The Dex oracle: inputs, outputs, measured agreement, build commands | Determinant half tied to `montrepol_checked` |
 | [`docs/files/src/main/scala/uor/kernel/Poly64.scala.md`](docs/files/src/main/scala/uor/kernel/Poly64.scala.md) | 926 | Detailed walkthrough of `Poly64.scala` (7,527 words) | Current |
-| [`docs/workflows-original/ci.yml.txt`](docs/workflows-original/ci.yml.txt) | 162 | Root `ci.yml` before the rewrite | Historical copy |
-| [`docs/workflows-original/honesty.yml.txt`](docs/workflows-original/honesty.yml.txt) | 34 | Root `honesty.yml` before the rewrite | Historical copy |
 
 ## 9. Build and test
 
@@ -696,7 +685,7 @@ The Dex side needs a dex-lang build (LLVM 12, GHC 8.10.7 through stack);
   under `montrepol/.github/`, where GitHub does not look.
 - The Dex determinant check covers `montrepol_checked`, not the author's
   `det`; `BareissVectors.hs` does not compile against the restored code.
-- `montrepol_checked/`, `docs/README-audit.md` and `docs/REPO.md` describe the
+- `montrepol_checked/` and `docs/REPO.md` describe the
   fabricated tree and have not been revised.
 - `Poly64` (Scala) compares by reference: two equal polynomials are not `==`
   because the case class holds arrays. Its arrays are public and mutable, and
@@ -809,7 +798,7 @@ flowchart LR
         direction TB
         D["montrepol_checked/"]
         E["dex/haskell/BareissVectors.hs"]
-        F["docs/README-audit.md and REPO.md (partial)"]
+        F["docs/REPO.md (partial)"]
     end
     B -.->|"restored from author's zip"| Live
     D -.->|"built from fabricated tree"| Stale
@@ -867,23 +856,23 @@ flowchart LR
 
 | Path | Lines | Section | Status |
 |------|-------|---------|--------|
-| `docs/README-audit.md` | 262 | 8 | **stale** |
-| `docs/README-original.md` | 287 | 8 | live |
+| `docs/README-audit.md` | 262 | 8 | deleted since |
+| `docs/README-original.md` | 287 | 8 | deleted since |
 | `docs/REPO.md` | 884 | 8 | **stale** |
 | `docs/dex-oracle.md` | 113 | 8 | live |
 | `docs/files/src/main/scala/uor/kernel/Poly64.scala.md` | 926 | 8 | live |
-| `docs/workflows-original/ci.yml.txt` | 162 | 8 | live |
-| `docs/workflows-original/honesty.yml.txt` | 34 | 8 | live |
+| `docs/workflows-original/ci.yml.txt` | 162 | 8 | deleted since |
+| `docs/workflows-original/honesty.yml.txt` | 34 | 8 | deleted since |
 
 #### montrepol/ — restored monorepo
 
 | Path | Lines | Section | Status |
 |------|-------|---------|--------|
-| `montrepol/.devcontainer/devcontainer.json` | 17 | 4.1 | live |
+| `montrepol/.devcontainer/devcontainer.json` | 17 | 4.1 | deleted since |
 | `montrepol/.github/workflows/ci.yml` | 32 | 4.2 | live |
 | `montrepol/.github/workflows/honesty.yml` | 29 | 4.2 | live |
 | `montrepol/.gitignore` | 11 | 4.1 | live |
-| `montrepol/AGENTS.md` | 67 | 4.2 | live |
+| `montrepol/AGENTS.md` | 67 | 4.2 | deleted since |
 | `montrepol/CONFORMANCE.md` | 109 | 4.2 | live |
 | `montrepol/LICENSE` | 661 | 4.2 | live |
 | `montrepol/LICENSES/UOR-template-Apache-2.0.txt` | 176 | 4.2 | live |

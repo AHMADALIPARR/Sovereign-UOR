@@ -159,8 +159,8 @@ a `build` or `open` claim, and the gate checks that. Property tests over random
 inputs are evidence; they are not proofs, and this repository calls a claim
 proved only when Agda has checked it.
 
-[`AGENTS.md`](AGENTS.md) defines the rules. [`VERIFICATION.md`](VERIFICATION.md)
-says what each gate discharges and records the defects planted to show it can
+[`VERIFICATION.md`](VERIFICATION.md) lists the rules R1-R6, says what each
+gate discharges and records the defects planted to show it can
 fail.
 
 ## Toolchain
