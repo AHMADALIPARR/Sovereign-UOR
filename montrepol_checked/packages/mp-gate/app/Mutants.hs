@@ -1,3 +1,7 @@
+-- SPDX-License-Identifier: AGPL-3.0-only
+-- Also licensed under the SnapKitty Opaque License (LicenseRef-SnapKitty-Opaque-1.0); see README.md.
+-- Copyright (C) 2026 Ahmad Parr
+
 -- | Replays @model/mutants.toml@: each planted defect must be caught by the
 -- tests it names. This is the falsifiability half of the gate; it shells out
 -- to cabal, so it lives in the executable, not the pure library.
