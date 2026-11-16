@@ -1,0 +1,100 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+'# Exact matrices in Dex
+
+'Integer matrices with their dimensions as index sets, as in mp-linalg.
+A table `n=>m=>Int` can only be multiplied by one indexed `m=>k`, so a
+dimension mismatch is a type error. Every check below compares with a value
+computed by hand, or with an independent algorithm; none compares a
+function with itself. This file is a quine: the `>` lines are the expected
+output, and CI diffs a run of the file against the file.
+
+def imatmul(x:n=>m=>Int, y:m=>k=>Int) -> n=>k=>Int given (n|Ix, m|Ix, k|Ix) =
+  for i l. sum for j:m. x[i,j] * y[j,l]
+
+def iadd(x:n=>m=>Int, y:n=>m=>Int) -> n=>m=>Int given (n|Ix, m|Ix) =
+  for i j. x[i,j] + y[i,j]
+
+'## The product, against hand-computed values
+
+# Integer literals default to Nat in Dex, so the element type is given.
+a : (Fin 2)=>(Fin 2)=>Int = [[1, 2], [3, 4]]
+b : (Fin 2)=>(Fin 2)=>Int = [[5, 6], [7, 8]]
+
+# check DX-01
+:p imatmul(a, b) == [[19, 22], [43, 50]]
+> True
+
+# A 2x3 by 3x2 product: the shapes differ, the result is 2x2.
+r : (Fin 2)=>(Fin 3)=>Int = [[1, 0, 2], [0, 1, 3]]
+s : (Fin 3)=>(Fin 2)=>Int = [[1, 1], [2, 0], [0, 4]]
+
+# check DX-01
+:p imatmul(r, s) == [[1, 9], [2, 12]]
+> True
+
+'## Associativity and distributivity, on a fixed integer example
+
+c : (Fin 2)=>(Fin 2)=>Int = [[2, -1], [0, 3]]
+
+# check DX-02
+:p imatmul(imatmul(a, b), c) == imatmul(a, imatmul(b, c))
+> True
+
+# check DX-02
+:p imatmul(a, iadd(b, c)) == iadd(imatmul(a, b), imatmul(a, c))
+> True
+
+'## Strassen's seven products, against the definition
+
+def strassen2(x:(Fin 2)=>(Fin 2)=>Int, y:(Fin 2)=>(Fin 2)=>Int) -> (Fin 2)=>(Fin 2)=>Int =
+  i0 = 0@(Fin 2)
+  i1 = 1@(Fin 2)
+  a11 = x[i0, i0]
+  a12 = x[i0, i1]
+  a21 = x[i1, i0]
+  a22 = x[i1, i1]
+  b11 = y[i0, i0]
+  b12 = y[i0, i1]
+  b21 = y[i1, i0]
+  b22 = y[i1, i1]
+  m1 = (a11 + a22) * (b11 + b22)
+  m2 = (a21 + a22) * b11
+  m3 = a11 * (b12 - b22)
+  m4 = a22 * (b21 - b11)
+  m5 = (a11 + a12) * b22
+  m6 = (a21 - a11) * (b11 + b12)
+  m7 = (a12 - a22) * (b21 + b22)
+  [[m1 + m4 - m5 + m7, m3 + m5], [m2 + m4, m1 - m2 + m3 + m6]]
+
+# check DX-03
+:p strassen2(a, b) == imatmul(a, b)
+> True
+
+# check DX-03
+:p strassen2(b, c) == imatmul(b, c)
+> True
+
+# check DX-03
+:p strassen2(c, a) == [[-1, 0], [9, 12]]
+> True
+
+'## Kish's effective sample size, exactly
+
+'(sum w)^2 >= k * sum w^2, by cross-multiplication in integers. For
+weights [3, 3, 3] the effective size is exactly 3.
+
+def kish_at_least(k:Int, w:n=>Int) -> Bool given (n|Ix) =
+  total = sum w
+  squares = sum for i:n. w[i] * w[i]
+  (total * total) >= (k * squares)
+
+w : (Fin 3)=>Int = [3, 3, 3]
+
+# check DX-04
+:p kish_at_least(3, w)
+> True
+
+# check DX-04
+:p kish_at_least(4, w)
+> False
