@@ -6,23 +6,64 @@ name: CI
 on:
   push:
     branches: [main]
+    # Docs-only pushes were starting (and cancelling) full Cabal/Dex jobs.
+    paths-ignore:
+      - "docs/**"
+      - "README.md"
+      - "**/*.png"
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "README.md"
+      - "**/*.png"
   workflow_dispatch:
 
+# Key the group on the PR number or the SHA, not the branch name. A group of
+# ci-${{ github.ref }} plus cancel-in-progress let a delayed push event for an
+# older SHA cancel the run already going for main's tip (CI run 95 on
+# f97e80e was cancelled by run 96 on bb9f47e).
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 env:
   SCALA_VERSION: "3.5.2"
 
 jobs:
+  # Skip leftover push events whose SHA is no longer the branch tip, so a
+  # late webhook cannot spend a runner (or, previously, cancel the tip).
+  gate:
+    name: Latest commit only
+    runs-on: ubuntu-latest
+    outputs:
+      continue: ${{ steps.check.outputs.continue }}
+    steps:
+      - id: check
+        name: Compare this SHA to the branch tip
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" != "push" ]; then
+            echo "continue=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          tip=$(git ls-remote --heads "https://github.com/${{ github.repository }}.git" "${{ github.ref_name }}" | awk '{print $1}')
+          echo "branch tip: $tip"
+          echo "this sha:   ${{ github.sha }}"
+          if [ "$tip" = "${{ github.sha }}" ]; then
+            echo "continue=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "This run is for an older commit; skipping the rest."
+            echo "continue=false" >> "$GITHUB_OUTPUT"
+          fi
+
   # ------------------------------------------------------------------
   # Scala: pure kernel + munit
   # ------------------------------------------------------------------
   scala-test:
     name: Scala Compile & Test
+    needs: [gate]
+    if: needs.gate.outputs.continue == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -108,6 +149,8 @@ jobs:
   # ------------------------------------------------------------------
   vv:
     name: montrepol build, test, gate
+    needs: [gate]
+    if: needs.gate.outputs.continue == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     defaults:
@@ -141,6 +184,8 @@ jobs:
   # ------------------------------------------------------------------
   formal:
     name: montrepol Agda proofs
+    needs: [gate]
+    if: needs.gate.outputs.continue == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
@@ -160,6 +205,8 @@ jobs:
   # ------------------------------------------------------------------
   liquid:
     name: montrepol Liquid Haskell
+    needs: [gate]
+    if: needs.gate.outputs.continue == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     defaults:
@@ -191,6 +238,8 @@ jobs:
   # ------------------------------------------------------------------
   dex:
     name: montrepol Dex
+    needs: [gate]
+    if: needs.gate.outputs.continue == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 300
     defaults:
@@ -220,8 +269,8 @@ jobs:
   status:
     name: CI Status
     runs-on: ubuntu-latest
-    needs: [scala-test, vv, formal, liquid, dex]
-    if: always()
+    needs: [gate, scala-test, vv, formal, liquid, dex]
+    if: always() && needs.gate.result == 'success' && needs.gate.outputs.continue == 'true'
     steps:
       - name: Aggregate
         run: |
