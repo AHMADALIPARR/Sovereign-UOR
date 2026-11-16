@@ -66,6 +66,9 @@ jobs:
     needs: vectors
     timeout-minutes: 300
     container: ubuntu:22.04
+    env:
+      # $HOME in the container belongs to another user, which stack refuses.
+      STACK_ROOT: /opt/stack-root
     steps:
       - name: System packages (LLVM 12, as upstream Dex requires)
         env:
@@ -87,12 +90,14 @@ jobs:
             | tar xz -C /tmp
           install /tmp/stack-2.15.7-linux-x86_64/stack /usr/local/bin/stack
           stack --version
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
+        id: dexcache
         with:
           path: |
-            ~/.stack
+            /opt/stack-root
             /opt/dex-lang/.stack-work
-          key: dex-${{ env.DEX_COMMIT }}-jammy-llvm12-v1
+          key: dex-${{ env.DEX_COMMIT }}-jammy-llvm12-v1-done
+          restore-keys: dex-${{ env.DEX_COMMIT }}-jammy-llvm12-v1-
       - name: Build dex
         working-directory: /opt/dex-lang
         run: |
@@ -105,6 +110,22 @@ jobs:
             -c -emit-llvm src/lib/dexrt.cpp -o src/lib/dexrt.bc
           stack --allow-different-user setup
           stack --allow-different-user build --fast
+      # A finished build is saved as "-done"; a failed one is saved too, under
+      # its run id, so the next run resumes where this one stopped.
+      - uses: actions/cache/save@v4
+        if: success() && steps.dexcache.outputs.cache-hit != 'true'
+        with:
+          path: |
+            /opt/stack-root
+            /opt/dex-lang/.stack-work
+          key: dex-${{ env.DEX_COMMIT }}-jammy-llvm12-v1-done
+      - uses: actions/cache/save@v4
+        if: failure()
+        with:
+          path: |
+            /opt/stack-root
+            /opt/dex-lang/.stack-work
+          key: dex-${{ env.DEX_COMMIT }}-jammy-llvm12-v1-partial-${{ github.run_id }}-${{ github.run_attempt }}
       - uses: actions/download-artifact@v4
         with:
           name: oracle-vectors
