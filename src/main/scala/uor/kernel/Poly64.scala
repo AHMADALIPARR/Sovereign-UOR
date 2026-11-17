@@ -1,4 +1,5 @@
 //> using scala 3.5.2
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package uor.kernel
 
 import java.nio.ByteBuffer

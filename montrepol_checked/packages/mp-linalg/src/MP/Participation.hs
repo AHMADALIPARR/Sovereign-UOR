@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
 -- | Participation ratio (Kish k_eff) of a probability vector.
 --
 -- For a vector of non-negative entries that sum to 1, the participation ratio

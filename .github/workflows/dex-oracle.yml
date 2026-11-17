@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Dual oracle: Dex re-computes values that the Scala kernel and
 # montrepol_checked compute, and the outputs must be byte-identical.
 # See docs/dex-oracle.md.

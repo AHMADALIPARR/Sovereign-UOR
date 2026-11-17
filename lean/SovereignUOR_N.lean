@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
 /-
   SovereignUOR_N.lean
   The B_n canonicalization for arbitrary n, Lean 4 core (Init) only.

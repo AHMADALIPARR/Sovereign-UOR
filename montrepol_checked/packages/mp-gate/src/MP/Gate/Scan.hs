@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
 -- | The source scanner. It finds test tags, deferral markers and partial
 -- functions, ignoring comments and strings (R3, R4, R5).
 --

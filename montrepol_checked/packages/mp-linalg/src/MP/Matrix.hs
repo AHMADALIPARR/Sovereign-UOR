@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
 -- | Matrices over a semiring.
 --
 -- The product is the definition: the (i, j) entry is the sum of the products

@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
 -- | Render the model as CONFORMANCE.md.
 module MP.Gate.Render
   ( render

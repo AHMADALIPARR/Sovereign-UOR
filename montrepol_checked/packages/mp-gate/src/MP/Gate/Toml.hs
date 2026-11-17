@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
 -- | A small TOML reader for the subset the model uses: top-level keys,
 -- arrays of tables (@[[name]]@), basic strings with escapes, integers,
 -- booleans, and one-line arrays of those. Anything else is a parse error

@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
 -- | The explicit formula for psi(x), truncated at the zeros supplied.
 module MP.ExplicitFormula
   ( explicitPsi

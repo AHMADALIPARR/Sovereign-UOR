@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Authorities cited by the model. Every some-true claim names one of these.
 # Generated and checked by the gate; do not edit by hand without updating the
 # corresponding citation.

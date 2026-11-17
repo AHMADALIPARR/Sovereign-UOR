@@ -1,4 +1,5 @@
 //> using scala 3.5.2
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package uor.kernel
 
 /** Simple wrapper for unsigned 64-bit integers (wrapping arithmetic on Long). */

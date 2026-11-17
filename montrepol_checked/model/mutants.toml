@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Planted defects. Each mutant must be caught by the tests named in `expect`.
 # The honesty workflow applies every mutant in turn, runs the package's test
 # suite, requires that every named ID reports FAIL, and that the tree is

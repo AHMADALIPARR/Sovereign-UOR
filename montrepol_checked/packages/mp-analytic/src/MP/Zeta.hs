@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
 -- | zeta by Euler-Maclaurin, Riemann-Siegel theta, and Hardy Z.
 --
 -- The closed forms for even integers use this package's Bernoulli numbers

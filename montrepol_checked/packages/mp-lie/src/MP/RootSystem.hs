@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
 -- | Crystallographic root systems and their Weyl groups.
 --
 -- A system is given by its simple roots in an integer coordinate space

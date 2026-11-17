@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
 -- | First side of the determinant dual oracle: the Bareiss determinant of
 -- montrepol_checked (MP.Matrix.det) on matrices drawn from SplitMix64
 -- (MP.Check.Random). dex/det.dx draws the same matrices with its own

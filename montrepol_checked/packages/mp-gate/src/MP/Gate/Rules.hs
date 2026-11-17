@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
 -- | The rules R1-R6 (see VERIFICATION.md and AGENTS.md in montrepol/).
 module MP.Gate.Rules
   ( Rule(..)

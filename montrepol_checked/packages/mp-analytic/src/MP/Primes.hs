@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
 -- | The sieve of Eratosthenes, von Mangoldt and Chebyshev psi, all exact.
 --
 -- Lambda(n) is log p when n = p^k and 0 otherwise, so it is represented by

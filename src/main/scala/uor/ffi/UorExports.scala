@@ -1,5 +1,6 @@
 //> using scala 3.5.2
 //> using dep org.graalvm.sdk:nativeimage:24.2.1
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package uor.ffi
 
 import org.graalvm.nativeimage.IsolateThread

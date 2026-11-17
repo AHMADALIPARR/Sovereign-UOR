@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # model/ids.toml --- the conformance ID register.
 #
 # Every claim with a test, in one place. CONFORMANCE.md is generated from

@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
 -- | Falsifiability of the gate. A gate that cannot fail reads as evidence
 -- and is worse than none, so each rule is shown firing on a planted defect,
 -- and firing alone: a defect must be reported under the rule it breaks.

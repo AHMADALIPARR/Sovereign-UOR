@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
 -- | Semirings, rings and fields, written out so the rest of the monorepo has
 -- no dependency the gate would have to trust.
 --

@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
 -- | Exact Bernoulli numbers by the recurrence from the definition of the
 -- generating function, so the denominators are the ones von Staudt-Clausen
 -- predicts (AN-03).

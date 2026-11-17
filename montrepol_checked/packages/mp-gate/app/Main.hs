@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
 -- | @mp-gate check@ (the default) reports every violation and exits non-zero
 -- if there is one. @mp-gate write@ regenerates CONFORMANCE.md from the model.
 -- @mp-gate mutants@ replays model/mutants.toml (see "Mutants").

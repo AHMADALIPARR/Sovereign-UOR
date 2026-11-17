@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
 -- | Linear recurrences over a field.
 --
 -- A connection polynomial @C(x) = 1 + c_1 x + ... + c_L x^L@ generates @s@
